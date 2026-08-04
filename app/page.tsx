@@ -5,6 +5,31 @@ import styles from "./page.module.css";
 
 const bars = [28, 42, 34, 60, 52, 78, 68, 91, 73, 64, 84, 72, 96, 88, 100, 82];
 
+const setupSteps = [
+  {
+    number: "01",
+    title: "Create your workspace",
+    description: "Sign up for Tokly and create the workspace where your machine activity will appear.",
+  },
+  {
+    number: "02",
+    title: "Install the Tokly CLI",
+    description: "Add the machine connector globally so the tokly command is available in your terminal.",
+    command: "npm install -g tokly-sdk",
+  },
+  {
+    number: "03",
+    title: "Connect from your terminal",
+    description: "Run the setup wizard. Tokly opens a secure browser sign-in and syncs your session back—no project key to copy.",
+    command: "tokly init",
+  },
+  {
+    number: "04",
+    title: "Choose what to monitor",
+    description: "Select the AI tools detected on your machine, preview the changes, and start monitoring.",
+  },
+];
+
 export default function HomePage() {
   return (
     <main id="main-content">
@@ -69,6 +94,54 @@ export default function HomePage() {
           </aside>
         </section>
       </div>
+
+      <section className={styles.getStarted} aria-labelledby="get-started-heading">
+        <div className={`page-frame ${styles.getStartedFrame}`}>
+          <div className={styles.getStartedIntro}>
+            <div>
+              <div className="eyebrow">Machine setup / 02</div>
+              <h2 id="get-started-heading">From account to live monitoring in minutes.</h2>
+            </div>
+            <div className={styles.getStartedCta}>
+              <p>
+                The guided setup detects supported AI tools and shows every configuration change
+                before it is applied.
+              </p>
+              <Link className="button" href="/sign-in?mode=sign-up">
+                Create your account →
+              </Link>
+            </div>
+          </div>
+
+          <ol className={styles.setupSteps}>
+            {setupSteps.map((step) => (
+              <li className={styles.setupStep} key={step.number}>
+                <div className={styles.stepNumber}>{step.number}</div>
+                <div className={styles.stepContent}>
+                  <h3>{step.title}</h3>
+                  <p>{step.description}</p>
+                  {step.command ? (
+                    <pre className={styles.command} aria-label={`Terminal command: ${step.command}`}>
+                      <code>
+                        <span aria-hidden="true">$</span> {step.command}
+                      </code>
+                    </pre>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className={styles.toolStrip} aria-label="Supported developer AI tools">
+            <span>Detects</span>
+            <span>Cursor</span>
+            <span>Codex</span>
+            <span>Claude Code</span>
+            <span>Gemini CLI</span>
+            <span>Ollama</span>
+          </div>
+        </div>
+      </section>
 
       <section className={styles.principles} aria-label="Platform principles">
         <article className={styles.principle}><span className={styles.principleIndex}>01 / Attribute</span><h2>Know what caused the spend.</h2><p>Break usage down by app, model, feature, environment, user, trace, and session.</p></article>
