@@ -31,7 +31,7 @@ function startOfMonth(value: Date) {
   return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), 1));
 }
 
-async function consumeRateLimit(apiKeyId: string, weight: number) {
+export async function consumeRateLimit(apiKeyId: string, weight: number) {
   const windowStart = startOfHour(new Date());
   windowStart.setUTCMinutes(new Date().getUTCMinutes(), 0, 0);
   const bucketKey = `${apiKeyId}:${windowStart.toISOString()}`;
@@ -122,6 +122,17 @@ async function createBudgetAlerts(
 export async function ingestUsage(rawKey: string, batch: UsageBatchInput) {
   const key = await authenticateProjectKey(rawKey);
   if (!key) return { status: "unauthorized" as const };
+  const result = await ingestUsageForIdentity(key, batch);
+  if (result.status === "ok") {
+    await getDb().update(projectApiKeys).set({ lastUsedAt: new Date() }).where(eq(projectApiKeys.id, key.id));
+  }
+  return result;
+}
+
+export async function ingestUsageForIdentity(
+  key: { id: string; organizationId: string; projectId: string; environment: string },
+  batch: UsageBatchInput,
+) {
   if (!(await consumeRateLimit(key.id, batch.events.length))) {
     return { status: "rate_limited" as const };
   }
@@ -192,6 +203,7 @@ export async function ingestUsage(rawKey: string, batch: UsageBatchInput) {
           costUsd: costValue,
           unpricedCount: cost.source === "unpriced" ? 1 : 0,
           totalLatencyMs: event.latencyMs ?? 0,
+          latencySampleCount: event.latencyMs === undefined ? 0 : 1,
         })
         .onConflictDoUpdate({
           target: [
@@ -214,6 +226,7 @@ export async function ingestUsage(rawKey: string, batch: UsageBatchInput) {
             costUsd: sql`${hourlyUsage.costUsd} + ${costValue}::numeric`,
             unpricedCount: sql`${hourlyUsage.unpricedCount} + ${cost.source === "unpriced" ? 1 : 0}`,
             totalLatencyMs: sql`${hourlyUsage.totalLatencyMs} + ${event.latencyMs ?? 0}`,
+            latencySampleCount: sql`${hourlyUsage.latencySampleCount} + ${event.latencyMs === undefined ? 0 : 1}`,
           },
         });
     }
@@ -222,10 +235,6 @@ export async function ingestUsage(rawKey: string, batch: UsageBatchInput) {
     return { accepted, duplicates };
   });
 
-  await getDb()
-    .update(projectApiKeys)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(projectApiKeys.id, key.id));
   return { status: "ok" as const, organizationId: key.organizationId, ...result };
 }
 

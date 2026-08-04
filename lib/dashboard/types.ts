@@ -16,6 +16,8 @@ export type DashboardData = {
     cacheSavings: number;
     budgetUsed: number;
     errorRate: number;
+    averageLatencyMs: number | null;
+    pricedCoverage: number;
   };
   series: DashboardSeriesPoint[];
   models: Array<{
@@ -35,6 +37,8 @@ export type DashboardData = {
     feature: string;
     tokens: number;
     cost: number | null;
+    costSource: string;
+    latencyMs: number | null;
     status: "success" | "error";
   }>;
   projects: Array<{ id: string; name: string; slug: string }>;

@@ -11,6 +11,9 @@ import { escapeHtml, sendEmail } from "@/lib/email";
 const githubConfigured = Boolean(
   process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET,
 );
+const googleConfigured = Boolean(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+);
 
 export const auth = betterAuth({
   appName: "Tokly",
@@ -41,14 +44,24 @@ export const auth = betterAuth({
       });
     },
   },
-  socialProviders: githubConfigured
-    ? {
-        github: {
-          clientId: process.env.GITHUB_CLIENT_ID!,
-          clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-        },
-      }
-    : {},
+  socialProviders: {
+    ...(githubConfigured
+      ? {
+          github: {
+            clientId: process.env.GITHUB_CLIENT_ID!,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+          },
+        }
+      : {}),
+    ...(googleConfigured
+      ? {
+          google: {
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          },
+        }
+      : {}),
+  },
   plugins: [
     organizationPlugin({
       requireEmailVerificationOnInvitation: process.env.NODE_ENV === "production",

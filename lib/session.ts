@@ -17,6 +17,27 @@ export async function requireSession() {
   return current;
 }
 
+export async function getDefaultWorkspaceSlug(userId: string, activeOrganizationId?: string | null) {
+  if (activeOrganizationId) {
+    const active = await getDb()
+      .select({ slug: organization.slug })
+      .from(organization)
+      .innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
+      .where(eq(organization.id, activeOrganizationId))
+      .limit(1);
+    if (active[0]) return active[0].slug;
+  }
+
+  const first = await getDb()
+    .select({ slug: organization.slug })
+    .from(organization)
+    .innerJoin(member, and(eq(member.organizationId, organization.id), eq(member.userId, userId)))
+    .where(eq(member.userId, userId))
+    .orderBy(member.createdAt)
+    .limit(1);
+  return first[0]?.slug ?? null;
+}
+
 export async function requireWorkspace(slug: string) {
   const current = await requireSession();
   const rows = await getDb()

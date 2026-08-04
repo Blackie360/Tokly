@@ -23,7 +23,7 @@ export default async function AcceptInvitationPage({
       <section className={styles.context}>
         <Logo />
         <div><div className="eyebrow">Workspace invitation</div><h1>Join the operations room.</h1></div>
-        <p className="mono">Membership grants access to usage telemetry, project health, and the controls allowed by your assigned role.</p>
+        <p className="mono">Membership grants access to usage telemetry, app health, and the controls allowed by your assigned role.</p>
       </section>
       <section className={styles.formPanel}>
         <div className={styles.formCard}>

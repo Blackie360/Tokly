@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { ToklyOptions, UsageEvent } from "./types.js";
 
 export type { ToklyOptions, UsageEvent, UsageOperation, UsageProvider } from "./types.js";
+export type { ConnectorFidelity, ConnectorStatus, MachineTool } from "./machine.js";
 
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 type QueuedEvent = UsageEvent & Required<Pick<UsageEvent, "id" | "timestamp">>;
@@ -19,9 +20,9 @@ export class Tokly {
 
   constructor(options: ToklyOptions) {
     if (typeof window !== "undefined") {
-      throw new Error("tokly-sdk is server-only; never expose a project write key in a browser.");
+      throw new Error("tokly-sdk is server-only; never expose an app write key in a browser.");
     }
-    if (!/^tok_(live|test)_/.test(options.apiKey)) throw new Error("A Tokly project write key is required.");
+    if (!/^tok_(live|test)_/.test(options.apiKey)) throw new Error("A Tokly app write key is required.");
     if (options.endpoint && !/^https?:\/\//.test(options.endpoint)) throw new Error("A valid Tokly endpoint URL is required.");
     this.#apiKey = options.apiKey;
     this.#endpoint = (options.endpoint ?? "https://tokly.blackielabs.com").replace(/\/$/, "");
@@ -67,7 +68,7 @@ export class Tokly {
           headers: {
             authorization: `Bearer ${this.#apiKey}`,
             "content-type": "application/json",
-            "user-agent": "tokly-sdk/0.1.1",
+            "user-agent": "tokly-sdk/0.2.0",
           },
           body: JSON.stringify({ events }),
         });

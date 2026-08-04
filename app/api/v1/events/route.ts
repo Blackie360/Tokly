@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
   const rawKey = readBearerToken(request);
   if (!rawKey) {
-    return Response.json({ error: "A valid project Bearer key is required." }, { status: 401 });
+    return Response.json({ error: "A valid app write key is required." }, { status: 401 });
   }
 
   let rawBody: unknown;
@@ -40,11 +40,11 @@ export async function POST(request: Request) {
 
   const result = await ingestUsage(rawKey, parsed.data);
   if (result.status === "unauthorized") {
-    return Response.json({ error: "Project key is invalid or revoked." }, { status: 401 });
+    return Response.json({ error: "App key is invalid or revoked." }, { status: 401 });
   }
   if (result.status === "rate_limited") {
     return Response.json(
-      { error: "Project ingestion rate limit exceeded." },
+      { error: "App ingestion rate limit exceeded." },
       { status: 429, headers: { "Retry-After": "60" } },
     );
   }

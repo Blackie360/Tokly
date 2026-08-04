@@ -1,4 +1,4 @@
-export type UsageProvider = "openai" | "anthropic" | "google" | "vercel" | "other";
+export type UsageProvider = "openai" | "anthropic" | "google" | "vercel" | "openrouter" | "ollama" | "other";
 export type UsageOperation = "generation" | "embedding";
 
 export type UsageEvent = {

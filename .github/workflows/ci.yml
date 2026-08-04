@@ -48,3 +48,21 @@ jobs:
 
       - name: Build application
         run: npm run build
+
+  connector-service-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace tokly-sdk
+      - name: Isolated login-service lifecycle
+        run: node --import tsx scripts/connector-service-smoke.ts

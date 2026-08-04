@@ -15,6 +15,10 @@ describe("usage event validation", () => {
     expect(usageEventSchema.parse(validEvent)).toMatchObject({ status: "success" });
   });
 
+  it.each(["openrouter", "ollama"] as const)("accepts %s as a first-class provider", (provider) => {
+    expect(usageEventSchema.safeParse({ ...validEvent, provider }).success).toBe(true);
+  });
+
   it("rejects negative token counts and unknown dimensions", () => {
     expect(usageEventSchema.safeParse({ ...validEvent, usage: { inputTokens: -1 } }).success).toBe(false);
     expect(

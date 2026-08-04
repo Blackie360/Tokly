@@ -1,7 +1,7 @@
 {
   "name": "tokly-sdk",
-  "version": "0.1.1",
-  "description": "Server-side TypeScript SDK for sending provider-neutral AI usage events to Tokly.",
+  "version": "0.2.0",
+  "description": "Tokly server SDK and privacy-preserving developer machine connector.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
@@ -22,14 +22,18 @@
     "usage",
     "openai",
     "anthropic",
+    "openrouter",
+    "ollama",
     "vercel-ai-sdk"
   ],
   "files": [
     "dist",
+    "src/windows-secret.ps1",
     "README.md",
     "LICENSE"
   ],
   "types": "./dist/index.d.ts",
+  "bin": { "tokly": "./dist/cli.js" },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -41,7 +45,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node --input-type=commonjs -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "prepack": "npm run build"
   },
   "engines": {
