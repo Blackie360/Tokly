@@ -19,6 +19,15 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       <section className={styles.context}>
         <Logo />
         <div><div className="eyebrow">Two-minute setup</div><h1>One app. One key. Clear costs.</h1></div>
+        <aside className={styles.cliPrompt} aria-labelledby="cli-prompt-heading">
+          <div className={styles.cliPromptHeader}>
+            <span className="coordinate">Next · connect your machine</span>
+            <span className={styles.cliBadge}>CLI</span>
+          </div>
+          <strong id="cli-prompt-heading">Start monitoring from your terminal</strong>
+          <pre><code>{`npm install -g tokly-sdk\ntokly init`}</code></pre>
+          <p>After your workspace is ready, run the wizard. Tokly opens your browser for secure sign-in—no project key to copy.</p>
+        </aside>
         <p className="mono">A workspace holds your team and the AI apps you want to track.</p>
       </section>
       <section className={styles.formPanel}>
