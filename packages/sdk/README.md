@@ -15,7 +15,7 @@ npm install -g tokly-sdk
 tokly init
 ```
 
-The wizard detects Cursor, Codex, Claude Code, Gemini CLI, and Ollama, explains monitoring fidelity, previews every file and login-service change, and applies only confirmed changes. It then opens Tokly in your browser: sign in, choose the Tokly app to connect, and the terminal continues automatically. You never copy a project key or machine credential. Machine credentials are stored only in macOS Keychain, Windows Credential Manager, or Linux Secret Service; setup stops if the OS credential store is unavailable.
+The wizard detects Cursor, Codex, Claude Code, Gemini CLI, and Ollama, explains monitoring fidelity, and lets you choose tools with the arrow keys, Space, and Enter. It previews every file and login-service change before applying anything. It then opens Tokly in your browser: sign in, choose the Tokly app to connect, and the terminal continues automatically. You never copy a project key or machine credential. Machine credentials are stored only in macOS Keychain, Windows Credential Manager, Linux Secret Service, or an initialized Linux `pass` store; setup stops if no supported encrypted credential store is available.
 
 Use `tokly status`, `tokly tools`, `tokly start`, `tokly stop`, or `tokly disconnect` to manage the connector. Claude Code and Gemini CLI report exact token metrics. Cursor, Codex, and Ollama report lifecycle activity only and never invent token or cost values.
 

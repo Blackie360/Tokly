@@ -3,38 +3,39 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
+import { acceptsConfirmation, selectTools } from "./prompts.js";
+import { VERSION } from "./version.js";
 import {
   applyToolConfigs, configPath, deleteConfig, deleteCredential, detectTools, firstFreePort,
   installService, loadConfig, machineName, previewChanges, readCredential, removeService,
   restoreToolConfigs, runCollector, sanitizeActivity, saveConfig, sendHook, startService,
-  stopService, storeCredential, parseToolSelection,
-  openBrowser,
+  stopService, storeCredential,
+  openBrowser, credentialStoreAvailable,
 } from "./machine.js";
 
-const VERSION = "0.2.0";
 const help = `Tokly ${VERSION}\n\nUsage:\n  tokly init [--endpoint URL]\n  tokly status\n  tokly tools\n  tokly start | stop\n  tokly disconnect\n`;
 const terminal = () => createInterface({ input: stdin, output: stdout });
 
 async function init() {
+  let existing: Awaited<ReturnType<typeof loadConfig>> | undefined;
+  try { existing = await loadConfig(); } catch { /* not initialized */ }
+  if (existing) throw new Error(`This machine is already connected to ${existing.projectName}. Run \"tokly disconnect\" first.`);
+  console.log("\nTokly machine setup\nOperational metadata only. Prompts, responses, files, emails, and provider credentials are never collected.\n");
+  const endpointArg = process.argv.indexOf("--endpoint");
+  const endpoint = (endpointArg >= 0 ? process.argv[endpointArg + 1] : undefined) || process.env.TOKLY_ENDPOINT || "https://tokly.blackielabs.com";
+  const detections = await detectTools();
+  console.table(detections.map((item) => ({ tool: item.label, version: item.version ?? "—", monitoring: item.status, note: item.conflict ?? "" })));
+  const selectable = detections.filter((item) => item.status === "exact" || item.status === "activity-only");
+  if (!selectable.length) throw new Error("No supported AI developer tools were detected.");
+  if (!credentialStoreAvailable()) throw new Error("No supported encrypted credential store was found. On Linux, install libsecret-tools or initialize pass; Tokly will not save credentials in plaintext.");
+  const selected = (await selectTools(selectable)).map((item) => item.tool);
+  if (!selected.length) throw new Error("Select at least one tool.");
+  const port = await firstFreePort();
+  console.log("\nChanges to apply:"); for (const line of previewChanges(selected, port)) console.log(`  • ${line}`);
   const rl = terminal();
   try {
-    let existing: Awaited<ReturnType<typeof loadConfig>> | undefined;
-    try { existing = await loadConfig(); } catch { /* not initialized */ }
-    if (existing) throw new Error(`This machine is already connected to ${existing.projectName}. Run \"tokly disconnect\" first.`);
-    console.log("\nTokly machine setup\nOperational metadata only. Prompts, responses, files, emails, and provider credentials are never collected.\n");
-    const endpointArg = process.argv.indexOf("--endpoint");
-    const endpoint = (endpointArg >= 0 ? process.argv[endpointArg + 1] : undefined) || process.env.TOKLY_ENDPOINT || "https://tokly.blackielabs.com";
-    const detections = await detectTools();
-    console.table(detections.map((item, index) => ({ id: index + 1, tool: item.label, version: item.version ?? "—", monitoring: item.status, note: item.conflict ?? "" })));
-    const selectable = detections.filter((item) => item.status === "exact" || item.status === "activity-only");
-    if (!selectable.length) throw new Error("No supported AI developer tools were detected.");
-    const answer = await rl.question(`Select tools (${selectable.map((item, index) => `${index + 1}=${item.label}`).join(", ")}; comma-separated, Enter=all): `);
-    const selected = parseToolSelection(answer, selectable.map((item) => item.tool));
-    if (!selected.length) throw new Error("No tools selected.");
-    const port = await firstFreePort();
-    console.log("\nChanges to apply:"); for (const line of previewChanges(selected, port)) console.log(`  • ${line}`);
-    const confirmation = await rl.question("\nApply these changes? [y/N] ");
-    if (!/^y(es)?$/i.test(confirmation.trim())) { console.log("No changes applied."); return; }
+    const confirmation = await rl.question("\nApply these changes? [Y/n] ");
+    if (!acceptsConfirmation(confirmation, true)) { console.log("No changes applied."); return; }
     const baseEndpoint = endpoint.replace(/\/$/, "");
     const authorizationResponse = await fetch(`${baseEndpoint}/api/v1/machines/authorize/start`, {
       method: "POST",
@@ -97,7 +98,7 @@ async function init() {
 
 async function status() {
   try { const config = await loadConfig(); readCredential(); let healthy = false; try { healthy = (await fetch(`http://127.0.0.1:${config.port}/health`, { signal: AbortSignal.timeout(500) })).ok; } catch { /* offline */ }
-    console.log(`Project: ${config.projectName}\nCollector: ${healthy ? "running" : "stopped"}\nAddress: 127.0.0.1:${config.port}\nTools: ${config.selectedTools.join(", ")}\nCredential: secured by the OS credential store`);
+    console.log(`Project: ${config.projectName}\nCollector: ${healthy ? "running" : "stopped"}\nAddress: 127.0.0.1:${config.port}\nTools: ${config.selectedTools.join(", ")}\nCredential: secured by an encrypted credential store`);
   } catch { console.log(`Tokly is not connected. Run \"tokly init\".\nConfig: ${configPath()}`); process.exitCode = 1; }
 }
 async function tools() { const found = await detectTools(); console.table(found.map((item) => ({ tool: item.label, version: item.version ?? "—", status: item.status, fidelity: item.fidelity, conflict: item.conflict ?? "" }))); }

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyToolConfigs, boundQueueItems, containsForbiddenFields, decodeOtlpProtobuf, detectTools, normalizeOtlp, parseToolSelection, restoreToolConfigs, sanitizeActivity, storeCredential } from "../packages/sdk/src/machine";
+import { acceptsConfirmation, updateMultiSelect } from "../packages/sdk/src/prompts";
+import { applyToolConfigs, boundQueueItems, containsForbiddenFields, decodeOtlpProtobuf, deleteCredential, detectTools, normalizeOtlp, parseToolSelection, readCredential, restoreToolConfigs, sanitizeActivity, storeCredential } from "../packages/sdk/src/machine";
 import { activityBatchSchema, machineUsageBatchSchema, pairMachineSchema, pollMachineAuthorizationSchema, startMachineAuthorizationSchema } from "@/lib/machines/schema";
 import { generateMachineDeviceAuthorization, hashProjectKey } from "@/lib/security/api-keys";
 
@@ -77,6 +78,16 @@ describe("machine connector privacy", () => {
     expect(parseToolSelection("3, 1, 3", [...choices])).toEqual(["ollama", "cursor"]);
   });
 
+  it("supports keyboard multi-select and Enter-as-yes confirmation", () => {
+    const initial = { cursor: 0, selected: new Set([0, 1]) };
+    const moved = updateMultiSelect(initial, "down", 2);
+    const toggled = updateMultiSelect(moved, "toggle", 2);
+    expect(moved.cursor).toBe(1);
+    expect([...toggled.selected]).toEqual([0]);
+    expect(acceptsConfirmation("", true)).toBe(true);
+    expect(acceptsConfirmation("n", true)).toBe(false);
+  });
+
   it("bounds the offline queue by item count and encoded bytes", () => {
     expect(boundQueueItems([1, 2, 3, 4], 2, 100)).toEqual([3, 4]);
     expect(boundQueueItems([{ model: "a" }, { model: "long-model" }], 10, 25)).toEqual([{ model: "long-model" }]);
@@ -110,6 +121,35 @@ describe("machine connector privacy", () => {
   it("fails closed when the OS credential store command is unavailable", () => {
     const path = process.env.PATH; process.env.PATH = "";
     try { expect(() => storeCredential("tok_agent_test")).toThrow(/will not save credentials in plaintext/); } finally { process.env.PATH = path; }
+  });
+
+  it("round-trips Linux credentials through an initialized pass store fallback", async () => {
+    if (process.platform !== "linux") return;
+    const home = await mkdtemp(join(tmpdir(), "tokly-pass-test-"));
+    const bin = join(home, "bin");
+    const secret = join(home, "encrypted-test-entry");
+    const prior = { path: process.env.PATH, home: process.env.TOKLY_USER_HOME, secret: process.env.TOKLY_FAKE_PASS_FILE, bin: process.env.TOKLY_FAKE_BIN };
+    try {
+      await mkdir(join(home, ".password-store"), { recursive: true });
+      await mkdir(bin, { recursive: true });
+      await writeFile(join(home, ".password-store/.gpg-id"), "test-only\n");
+      await writeFile(join(bin, "which"), "#!/bin/sh\nif [ \"$1\" = pass ]; then echo \"$TOKLY_FAKE_BIN/pass\"; exit 0; fi\nexit 1\n", { mode: 0o755 });
+      await writeFile(join(bin, "pass"), "#!/bin/sh\ncase \"$1\" in\n  insert) /bin/cat > \"$TOKLY_FAKE_PASS_FILE\" ;;\n  show) /bin/cat \"$TOKLY_FAKE_PASS_FILE\" ;;\n  rm) /bin/rm -f \"$TOKLY_FAKE_PASS_FILE\" ;;\n  *) exit 1 ;;\nesac\n", { mode: 0o755 });
+      process.env.PATH = bin;
+      process.env.TOKLY_USER_HOME = home;
+      process.env.TOKLY_FAKE_PASS_FILE = secret;
+      process.env.TOKLY_FAKE_BIN = bin;
+      storeCredential("tok_agent_encrypted_test");
+      expect(readCredential()).toBe("tok_agent_encrypted_test");
+      deleteCredential();
+      await expect(readFile(secret, "utf8")).rejects.toThrow();
+    } finally {
+      if (prior.path === undefined) delete process.env.PATH; else process.env.PATH = prior.path;
+      if (prior.home === undefined) delete process.env.TOKLY_USER_HOME; else process.env.TOKLY_USER_HOME = prior.home;
+      if (prior.secret === undefined) delete process.env.TOKLY_FAKE_PASS_FILE; else process.env.TOKLY_FAKE_PASS_FILE = prior.secret;
+      if (prior.bin === undefined) delete process.env.TOKLY_FAKE_BIN; else process.env.TOKLY_FAKE_BIN = prior.bin;
+      await rm(home, { recursive: true, force: true });
+    }
   });
 
   it("returns a typed status for every supported connector", async () => {

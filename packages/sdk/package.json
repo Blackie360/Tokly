@@ -1,6 +1,6 @@
 {
   "name": "tokly-sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Tokly server SDK and privacy-preserving developer machine connector.",
   "type": "module",
   "sideEffects": false,

@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { constants } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import { homedir, hostname, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { VERSION } from "./version.js";
 
 export type MachineTool = "cursor" | "codex" | "claude_code" | "gemini_cli" | "ollama";
 export type ConnectorFidelity = "exact" | "activity-only";
@@ -23,6 +24,14 @@ function commandPath(name: string) {
   const finder = platform() === "win32" ? "where.exe" : "which";
   const found = spawnSync(finder, [name], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   return found.status === 0 ? found.stdout.trim().split(/\r?\n/)[0] : undefined;
+}
+
+const passEntry = () => `tokly/machines/${hostname().replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+const passwordStoreDir = () => process.env.PASSWORD_STORE_DIR || join(userHome(), ".password-store");
+export function credentialStoreAvailable() {
+  if (platform() === "darwin") return Boolean(commandPath("security"));
+  if (platform() === "win32") return Boolean(commandPath("powershell.exe"));
+  return Boolean(commandPath("secret-tool")) || (Boolean(commandPath("pass")) && existsSync(join(passwordStoreDir(), ".gpg-id")));
 }
 
 export function openBrowser(url: string) {
@@ -140,21 +149,24 @@ export async function restoreToolConfigs(backups: Record<string, string | null>)
   }
 }
 
-function secretCommand(action: "store" | "read" | "delete", token?: string) {
+function secretCommands(action: "store" | "read" | "delete", token?: string) {
   if (platform() === "darwin") {
     const args = action === "store" ? ["add-generic-password", "-U", "-a", hostname(), "-s", SERVICE, "-w", token!] : action === "read" ? ["find-generic-password", "-a", hostname(), "-s", SERVICE, "-w"] : ["delete-generic-password", "-a", hostname(), "-s", SERVICE];
-    return spawnSync("security", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return [{ command: "security", args, input: undefined }];
   }
   if (platform() === "linux") {
-    const args = action === "store" ? ["store", "--label=Tokly machine credential", "service", SERVICE, "machine", hostname()] : action === "read" ? ["lookup", "service", SERVICE, "machine", hostname()] : ["clear", "service", SERVICE, "machine", hostname()];
-    return spawnSync("secret-tool", args, { input: action === "store" ? token : undefined, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+    const commands: Array<{ command: string; args: string[]; input?: string }> = [];
+    if (commandPath("secret-tool")) commands.push({ command: "secret-tool", args: action === "store" ? ["store", "--label=Tokly machine credential", "service", SERVICE, "machine", hostname()] : action === "read" ? ["lookup", "service", SERVICE, "machine", hostname()] : ["clear", "service", SERVICE, "machine", hostname()], input: action === "store" ? token : undefined });
+    if (commandPath("pass") && existsSync(join(passwordStoreDir(), ".gpg-id"))) commands.push({ command: "pass", args: action === "store" ? ["insert", "--multiline", "--force", passEntry()] : action === "read" ? ["show", passEntry()] : ["rm", "--force", passEntry()], input: action === "store" ? `${token}\n` : undefined });
+    return commands;
   }
   const verb = action === "store" ? "store" : action === "read" ? "read" : "delete";
-  return spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-File", join(dirname(new URL(import.meta.url).pathname), "../src/windows-secret.ps1"), verb], { input: token, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+  return [{ command: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-File", join(dirname(new URL(import.meta.url).pathname), "../src/windows-secret.ps1"), verb], input: token }];
 }
-export function storeCredential(token: string) { const result = secretCommand("store", token); if (result.status !== 0) throw new Error("The OS credential store is unavailable. Install/unlock Secret Service or your system keychain; Tokly will not save credentials in plaintext."); }
-export function readCredential() { const result = secretCommand("read"); if (result.status !== 0 || !result.stdout.trim()) throw new Error("Tokly machine credential was not found in the OS credential store."); return result.stdout.trim(); }
-export function deleteCredential() { secretCommand("delete"); }
+function runSecretCommand(command: { command: string; args: string[]; input?: string }) { return spawnSync(command.command, command.args, { input: command.input, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }); }
+export function storeCredential(token: string) { for (const command of secretCommands("store", token)) if (runSecretCommand(command).status === 0) return; throw new Error("The encrypted credential store is unavailable. Install/unlock Secret Service, initialize pass, or unlock your system keychain; Tokly will not save credentials in plaintext."); }
+export function readCredential() { for (const command of secretCommands("read")) { const result = runSecretCommand(command); if (result.status === 0 && result.stdout.trim()) return result.stdout.trim(); } throw new Error("Tokly machine credential was not found in an encrypted credential store."); }
+export function deleteCredential() { for (const command of secretCommands("delete")) runSecretCommand(command); }
 
 export async function loadConfig() { return JSON.parse(await readFile(configPath(), "utf8")) as MachineConfig; }
 export async function saveConfig(config: MachineConfig) { await writeJson(configPath(), config); }
@@ -210,7 +222,7 @@ export function normalizeOtlp(payload: unknown, checkpoints: Record<string, numb
   return events;
 }
 
-async function post(endpoint: string, path: string, token: string, body: unknown) { const response = await fetch(`${endpoint}${path}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "user-agent": "tokly-machine/0.2.0" }, body: JSON.stringify(body) }); if (!response.ok) throw new Error(`Tokly returned HTTP ${response.status}.`); return response; }
+async function post(endpoint: string, path: string, token: string, body: unknown) { const response = await fetch(`${endpoint}${path}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "user-agent": `tokly-machine/${VERSION}` }, body: JSON.stringify(body) }); if (!response.ok) throw new Error(`Tokly returned HTTP ${response.status}.`); return response; }
 export function boundQueueItems(items: unknown[], maxItems = 10_000, maxBytes = 10_000_000) { const bounded = [...items]; while (bounded.length > maxItems || JSON.stringify(bounded).length > maxBytes) bounded.shift(); return bounded; }
 export function parseToolSelection(answer: string, tools: MachineTool[]) { if (!answer.trim()) return [...tools]; return [...new Set(answer.split(",").map((value) => tools[Number(value.trim()) - 1]).filter((tool): tool is MachineTool => Boolean(tool)))]; }
 async function enqueue(path: string, body: unknown) { const current = await readJson(queuePath()); const items = Array.isArray(current.items) ? current.items as unknown[] : []; await writeJson(queuePath(), { items: boundQueueItems([...items, { path, body }]) }); }
