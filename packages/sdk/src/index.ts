@@ -67,7 +67,7 @@ export class Tokly {
           headers: {
             authorization: `Bearer ${this.#apiKey}`,
             "content-type": "application/json",
-            "user-agent": "tokly-sdk/0.1.0",
+            "user-agent": "tokly-sdk/0.1.1",
           },
           body: JSON.stringify({ events }),
         });
