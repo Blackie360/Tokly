@@ -19,7 +19,7 @@ export class Tokly {
 
   constructor(options: ToklyOptions) {
     if (typeof window !== "undefined") {
-      throw new Error("@blackie360/tokly is server-only; never expose a project write key in a browser.");
+      throw new Error("tokly is server-only; never expose a project write key in a browser.");
     }
     if (!/^tok_(live|test)_/.test(options.apiKey)) throw new Error("A Tokly project write key is required.");
     if (options.endpoint && !/^https?:\/\//.test(options.endpoint)) throw new Error("A valid Tokly endpoint URL is required.");
@@ -67,7 +67,7 @@ export class Tokly {
           headers: {
             authorization: `Bearer ${this.#apiKey}`,
             "content-type": "application/json",
-            "user-agent": "@blackie360/tokly/0.1.0",
+            "user-agent": "tokly/0.1.0",
           },
           body: JSON.stringify({ events }),
         });

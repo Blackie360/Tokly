@@ -63,8 +63,8 @@ Request controls include a 256 KiB body limit, strict allowlisted fields, bounde
 The published npm package is server-only. Never instantiate it in browser code.
 
 ```ts
-import { createTokly } from "@blackie360/tokly";
-import { fromOpenAIResponse } from "@blackie360/tokly/adapters";
+import { createTokly } from "tokly";
+import { fromOpenAIResponse } from "tokly/adapters";
 
 const meter = createTokly({
   apiKey: process.env.TOKLY_API_KEY!,
@@ -108,4 +108,4 @@ TEST_DATABASE_URL=postgresql://tokly_app:tokly@localhost:5432/tokly npm run test
 
 The integration suite writes isolated UUID fixtures and removes only those fixtures. The database-backed Playwright onboarding suite requires a migrated disposable database and is opt-in with `E2E_DATABASE_URL`; it covers account creation, workspace/project setup, one-time key reveal, ingestion, dashboard updates, explorer filters/charts, budgets, and invitations. The database-free desktop/mobile demo tests always run.
 
-See [architecture](./docs/architecture.md) for the trust boundaries and [operations](./docs/operations.md) for deployment, retention, and incident-safe key rotation.
+See [architecture](./docs/architecture.md) for the trust boundaries, [deployment](./docs/deployment.md) for GitHub Actions and Vercel setup, and [operations](./docs/operations.md) for retention and incident-safe key rotation.
