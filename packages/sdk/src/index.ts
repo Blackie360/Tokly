@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ToklyOptions, UsageEvent } from "./types.js";
+import { VERSION } from "./version.js";
 
 export type { ToklyOptions, UsageEvent, UsageOperation, UsageProvider } from "./types.js";
 export type { ConnectorFidelity, ConnectorStatus, MachineTool } from "./machine.js";
@@ -68,7 +69,7 @@ export class Tokly {
           headers: {
             authorization: `Bearer ${this.#apiKey}`,
             "content-type": "application/json",
-            "user-agent": "tokly-sdk/0.2.0",
+            "user-agent": `tokly-sdk/${VERSION}`,
           },
           body: JSON.stringify({ events }),
         });
