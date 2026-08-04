@@ -62,6 +62,24 @@ Request controls include a 256 KiB body limit, strict allowlisted fields, bounde
 
 The published npm package is server-only. Never instantiate it in browser code.
 
+To install the Tokly CLI and connect your developer machine:
+
+```bash
+npm install -g tokly-sdk
+tokly init
+```
+
+To uninstall it, disconnect first so Tokly can remove its collector service and owned tool
+configuration, then remove the global npm package:
+
+```bash
+tokly disconnect
+npm uninstall -g tokly-sdk
+```
+
+If you installed `tokly-sdk` only as a project dependency, remove it with
+`npm uninstall tokly-sdk` instead.
+
 ```ts
 import { createTokly } from "tokly-sdk";
 import { fromOpenAIResponse } from "tokly-sdk/adapters";
