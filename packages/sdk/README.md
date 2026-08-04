@@ -19,6 +19,22 @@ The wizard detects Cursor, Codex, Claude Code, Gemini CLI, and Ollama, explains 
 
 Use `tokly status`, `tokly tools`, `tokly start`, `tokly stop`, or `tokly disconnect` to manage the connector. Claude Code and Gemini CLI report exact token metrics. Cursor, Codex, and Ollama report lifecycle activity only and never invent token or cost values.
 
+## Uninstall
+
+If you configured the machine connector, disconnect first so Tokly removes its collector service
+and owned tool configuration. Then uninstall the global package:
+
+```bash
+tokly disconnect
+npm uninstall -g tokly-sdk
+```
+
+If you installed only the server SDK in a project, remove that dependency with:
+
+```bash
+npm uninstall tokly-sdk
+```
+
 ## Usage
 
 ```ts
