@@ -1,18 +1,18 @@
-# @blackie360/tokly
+# tokly-sdk
 
 Server-side TypeScript SDK for sending provider-neutral AI usage events to Tokly. It records token counts and operational metadata only—never prompts, completions, files, or provider credentials.
 
 ## Install
 
 ```bash
-npm install @blackie360/tokly
+npm install tokly-sdk
 ```
 
 ## Usage
 
 ```ts
-import { createTokly } from "@blackie360/tokly";
-import { fromOpenAIResponse } from "@blackie360/tokly/adapters";
+import { createTokly } from "tokly-sdk";
+import { fromOpenAIResponse } from "tokly-sdk/adapters";
 
 const tokly = createTokly({
   apiKey: process.env.TOKLY_API_KEY!,
@@ -38,7 +38,7 @@ The SDK requires Node.js 20 or newer. A Tokly project write key must only be use
 
 ## Adapters
 
-The `@blackie360/tokly/adapters` entry point includes helpers for:
+The `tokly-sdk/adapters` entry point includes helpers for:
 
 - Vercel AI SDK usage
 - OpenAI Responses usage

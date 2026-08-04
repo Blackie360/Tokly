@@ -4,7 +4,7 @@ Tokly uses three GitHub Actions workflows:
 
 - `CI` validates pull requests and pushes to `main`.
 - `Deploy production` builds and deploys the web application to Vercel after every push to `main`.
-- `Publish SDK` publishes the `@blackie360/tokly` npm package from GitHub releases tagged `sdk-v<version>`.
+- `Publish SDK` publishes the `tokly-sdk` npm package from GitHub releases tagged `sdk-v<version>`.
 
 ## Vercel production setup
 
@@ -24,7 +24,7 @@ The deployment workflow pins Vercel CLI `58.5.1`, pulls the production environme
 
 ## npm trusted publishing
 
-Open the `@blackie360/tokly` package settings on npm and add a GitHub Actions trusted publisher with:
+Open the `tokly-sdk` package settings on npm and add a GitHub Actions trusted publisher with:
 
 - Organization or user: `Blackie360`
 - Repository: `Tokly`

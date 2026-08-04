@@ -44,10 +44,10 @@ jobs:
         run: npm test -- tests/sdk.test.ts
 
       - name: Build SDK
-        run: npm run build --workspace @blackie360/tokly
+        run: npm run build --workspace tokly-sdk
 
       - name: Inspect package contents
-        run: npm pack --workspace @blackie360/tokly --dry-run
+        run: npm pack --workspace tokly-sdk --dry-run
 
       - name: Publish to npm
-        run: npm publish --workspace @blackie360/tokly --access public
+        run: npm publish --workspace tokly-sdk --access public
