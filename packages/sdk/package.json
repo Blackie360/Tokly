@@ -1,5 +1,5 @@
 {
-  "name": "@blackie/tokly",
+  "name": "@blackie360/tokly",
   "version": "0.1.0",
   "description": "Server-side TypeScript SDK for sending provider-neutral AI usage events to Tokly.",
   "type": "module",

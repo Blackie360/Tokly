@@ -63,8 +63,8 @@ Request controls include a 256 KiB body limit, strict allowlisted fields, bounde
 The published npm package is server-only. Never instantiate it in browser code.
 
 ```ts
-import { createTokly } from "@blackie/tokly";
-import { fromOpenAIResponse } from "@blackie/tokly/adapters";
+import { createTokly } from "@blackie360/tokly";
+import { fromOpenAIResponse } from "@blackie360/tokly/adapters";
 
 const meter = createTokly({
   apiKey: process.env.TOKLY_API_KEY!,
