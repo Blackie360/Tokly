@@ -13,8 +13,8 @@ export default function HomePage() {
           <Logo />
           <div className={styles.headerActions}>
             <ThemeToggle />
-            <Link className="button" href="/sign-in">
-              Start monitoring →
+            <Link className="button" href="/sign-in?mode=sign-up">
+              Get started →
             </Link>
           </div>
         </header>
@@ -31,8 +31,8 @@ export default function HomePage() {
                 proxying traffic or surrendering provider credentials.
               </p>
               <div className={styles.heroActions}>
-                <Link className="button" href="/sign-in">
-                  Create workspace →
+                <Link className="button" href="/sign-in?mode=sign-up">
+                  Create free workspace →
                 </Link>
                 <Link className="button secondary" href="/demo">
                   Inspect live demo
@@ -71,7 +71,7 @@ export default function HomePage() {
       </div>
 
       <section className={styles.principles} aria-label="Platform principles">
-        <article className={styles.principle}><span className={styles.principleIndex}>01 / Attribute</span><h2>Know what caused the spend.</h2><p>Break usage down by project, model, feature, environment, user, trace, and session.</p></article>
+        <article className={styles.principle}><span className={styles.principleIndex}>01 / Attribute</span><h2>Know what caused the spend.</h2><p>Break usage down by app, model, feature, environment, user, trace, and session.</p></article>
         <article className={styles.principle}><span className={styles.principleIndex}>02 / Reconcile</span><h2>Price history, not guesswork.</h2><p>Effective-dated model rates preserve the cost calculation that applied when each call ran.</p></article>
         <article className={styles.principle}><span className={styles.principleIndex}>03 / Respond</span><h2>Budgets that speak up early.</h2><p>Threshold alerts reach your team before a monthly AI bill becomes an incident.</p></article>
       </section>

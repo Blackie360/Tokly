@@ -1,0 +1,1 @@
+ALTER TABLE "hourly_usage" ADD COLUMN "latency_sample_count" bigint DEFAULT 0 NOT NULL;

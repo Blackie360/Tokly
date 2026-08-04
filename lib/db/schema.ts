@@ -19,10 +19,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 const now = () => timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
+const authId = () => text("id").default(sql`gen_random_uuid()::text`).primaryKey();
 
 // Better Auth core tables.
 export const user = pgTable("user", {
-  id: text("id").primaryKey(),
+  id: authId(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
@@ -34,7 +35,7 @@ export const user = pgTable("user", {
 export const session = pgTable(
   "session",
   {
-    id: text("id").primaryKey(),
+    id: authId(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     token: text("token").notNull().unique(),
     createdAt: now(),
@@ -52,7 +53,7 @@ export const session = pgTable(
 export const account = pgTable(
   "account",
   {
-    id: text("id").primaryKey(),
+    id: authId(),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
@@ -74,7 +75,7 @@ export const account = pgTable(
 export const verification = pgTable(
   "verification",
   {
-    id: text("id").primaryKey(),
+    id: authId(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -86,7 +87,7 @@ export const verification = pgTable(
 
 // Better Auth organization plugin tables.
 export const organization = pgTable("organization", {
-  id: text("id").primaryKey(),
+  id: authId(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
@@ -98,7 +99,7 @@ export const organization = pgTable("organization", {
 export const member = pgTable(
   "member",
   {
-    id: text("id").primaryKey(),
+    id: authId(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -117,7 +118,7 @@ export const member = pgTable(
 export const invitation = pgTable(
   "invitation",
   {
-    id: text("id").primaryKey(),
+    id: authId(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -138,6 +139,8 @@ export const providerEnum = pgEnum("usage_provider", [
   "anthropic",
   "google",
   "vercel",
+  "openrouter",
+  "ollama",
   "other",
 ]);
 export const operationEnum = pgEnum("usage_operation", ["generation", "embedding"]);
@@ -145,6 +148,7 @@ export const usageStatusEnum = pgEnum("usage_status", ["success", "error"]);
 export const keyEnvironmentEnum = pgEnum("key_environment", ["live", "test"]);
 export const budgetScopeEnum = pgEnum("budget_scope", ["organization", "project"]);
 export const deliveryStatusEnum = pgEnum("delivery_status", ["pending", "sent", "failed"]);
+export const machineToolEnum = pgEnum("machine_tool", ["cursor", "codex", "claude_code", "gemini_cli", "ollama"]);
 
 const tenantPolicy = (name: string, organizationId: AnyPgColumn) =>
   pgPolicy(name, {
@@ -192,6 +196,92 @@ export const projectApiKeys = pgTable(
     index("project_api_keys_org_idx").on(table.organizationId),
   ],
 );
+
+// Device authorization, pairing, and agent credential tables are intentionally
+// lookup-capable before a tenant is known. They contain only hashes/prefixes,
+// never raw credentials.
+export const machineDeviceAuthorizations = pgTable(
+  "machine_device_authorizations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    deviceCodeHash: text("device_code_hash").notNull().unique(),
+    userCodeHash: text("user_code_hash").notNull().unique(),
+    deviceName: text("device_name").notNull(),
+    platform: text("platform").notNull(),
+    clientVersion: text("client_version").notNull(),
+    selectedTools: jsonb("selected_tools").$type<string[]>().default([]).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    intervalSeconds: integer("interval_seconds").default(2).notNull(),
+    organizationId: uuid("organization_id"),
+    projectId: uuid("project_id"),
+    approvedBy: text("approved_by"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (table) => [
+    index("machine_device_authorizations_expires_idx").on(table.expiresAt),
+    index("machine_device_authorizations_project_idx").on(table.projectId),
+  ],
+);
+
+export const machinePairingCodes = pgTable(
+  "machine_pairing_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    codeHash: text("code_hash").notNull().unique(),
+    createdBy: text("created_by").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (table) => [index("machine_pairing_codes_project_idx").on(table.projectId)],
+);
+
+export const machineConnections = pgTable(
+  "machine_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    name: text("name").notNull(),
+    platform: text("platform").notNull(),
+    credentialPrefix: text("credential_prefix").notNull(),
+    credentialHash: text("credential_hash").notNull().unique(),
+    selectedTools: jsonb("selected_tools").$type<string[]>().default([]).notNull(),
+    clientVersion: text("client_version").notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (table) => [index("machine_connections_project_idx").on(table.projectId), index("machine_connections_org_idx").on(table.organizationId)],
+);
+
+export const agentActivityEvents = pgTable(
+  "agent_activity_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    connectionId: uuid("connection_id").notNull(),
+    eventId: text("event_id").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+    tool: machineToolEnum("tool").notNull(),
+    eventType: text("event_type").notNull(),
+    model: text("model"),
+    status: text("status"),
+    durationMs: integer("duration_ms"),
+    sessionId: text("session_id"),
+  },
+  (table) => [
+    uniqueIndex("agent_activity_project_event_unique").on(table.projectId, table.eventId),
+    index("agent_activity_org_occurred_idx").on(table.organizationId, table.occurredAt),
+    tenantPolicy("agent_activity_tenant_isolation", table.organizationId),
+  ],
+).enableRLS();
 
 export const usageEvents = pgTable(
   "usage_events",
@@ -250,6 +340,7 @@ export const hourlyUsage = pgTable(
     costUsd: numeric("cost_usd", { precision: 20, scale: 10 }).default("0").notNull(),
     unpricedCount: bigint("unpriced_count", { mode: "number" }).default(0).notNull(),
     totalLatencyMs: bigint("total_latency_ms", { mode: "number" }).default(0).notNull(),
+    latencySampleCount: bigint("latency_sample_count", { mode: "number" }).default(0).notNull(),
   },
   (table) => [
     primaryKey({
@@ -365,3 +456,5 @@ export type Project = typeof projects.$inferSelect;
 export type UsageEvent = typeof usageEvents.$inferSelect;
 export type ModelPrice = typeof modelPrices.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
+export type MachineConnection = typeof machineConnections.$inferSelect;
+export type AgentActivityEvent = typeof agentActivityEvents.$inferSelect;

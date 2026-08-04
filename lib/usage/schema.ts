@@ -7,7 +7,7 @@ export const usageEventSchema = z
   .object({
     id: z.string().trim().min(1).max(128),
     timestamp: z.iso.datetime({ offset: true }),
-    provider: z.enum(["openai", "anthropic", "google", "vercel", "other"]),
+    provider: z.enum(["openai", "anthropic", "google", "vercel", "openrouter", "ollama", "other"]),
     model: z.string().trim().min(1).max(160),
     operation: z.enum(["generation", "embedding"]),
     usage: z

@@ -18,3 +18,9 @@ export function formatDateTime(value: string) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+export function formatDuration(value: number | null) {
+  if (value === null) return "Not reported";
+  if (value < 1_000) return `${Math.round(value)} ms`;
+  return `${(value / 1_000).toFixed(value < 10_000 ? 1 : 0)} s`;
+}

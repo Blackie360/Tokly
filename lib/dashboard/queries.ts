@@ -4,6 +4,7 @@ import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { withTenant } from "@/lib/db/tenant";
 import {
   budgets,
+  agentActivityEvents,
   hourlyUsage,
   notifications,
   projects,
@@ -19,7 +20,31 @@ export type DashboardFilters = {
   model?: string;
   feature?: string;
   status?: "success" | "error";
+  sort?: "time" | "cost" | "tokens";
 };
+
+export async function hasUsageEvents(organizationId: string): Promise<boolean> {
+  return withTenant(organizationId, async (tx) => {
+    const rows = await tx
+      .select({ total: sql<number>`count(*)` })
+      .from(usageEvents)
+      .where(eq(usageEvents.organizationId, organizationId));
+    return Number(rows[0]?.total ?? 0) > 0;
+  });
+}
+
+export async function getAgentActivity(organizationId: string, projectId?: string) {
+  return withTenant(organizationId, async (tx) => {
+    const rows = await tx.select({
+      id: agentActivityEvents.eventId, occurredAt: agentActivityEvents.occurredAt, projectId: agentActivityEvents.projectId,
+      tool: agentActivityEvents.tool, eventType: agentActivityEvents.eventType, model: agentActivityEvents.model,
+      status: agentActivityEvents.status, durationMs: agentActivityEvents.durationMs,
+    }).from(agentActivityEvents).where(and(eq(agentActivityEvents.organizationId, organizationId), projectId ? eq(agentActivityEvents.projectId, projectId) : undefined)).orderBy(desc(agentActivityEvents.occurredAt)).limit(100);
+    const names = await tx.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.organizationId, organizationId));
+    const map = new Map(names.map((project) => [project.id, project.name]));
+    return rows.map((row) => ({ ...row, occurredAt: row.occurredAt.toISOString(), project: map.get(row.projectId) ?? "Unknown app" }));
+  });
+}
 
 export async function getDashboardData(
   organizationId: string,
@@ -28,6 +53,11 @@ export async function getDashboardData(
   const now = new Date();
   const since = new Date(now.getTime() - filters.days * 86_400_000);
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const recentOrder = filters.sort === "cost"
+    ? sql`${usageEvents.costUsd} desc nulls last`
+    : filters.sort === "tokens"
+      ? desc(sql`${usageEvents.inputTokens} + ${usageEvents.outputTokens}`)
+      : desc(usageEvents.occurredAt);
 
   return withTenant(organizationId, async (tx) => {
     const projectRows = await tx
@@ -63,6 +93,8 @@ export async function getDashboardData(
         inputTokens: usageEvents.inputTokens,
         outputTokens: usageEvents.outputTokens,
         costUsd: usageEvents.costUsd,
+        costSource: usageEvents.costSource,
+        latencyMs: usageEvents.latencyMs,
         status: usageEvents.status,
       })
       .from(usageEvents)
@@ -78,7 +110,7 @@ export async function getDashboardData(
           filters.status ? eq(usageEvents.status, filters.status) : undefined,
         ),
       )
-      .orderBy(desc(usageEvents.occurredAt))
+      .orderBy(recentOrder, desc(usageEvents.occurredAt))
       .limit(100);
 
     const budgetRows = await tx
@@ -101,6 +133,9 @@ export async function getDashboardData(
     let cacheTokens = 0;
     let requests = 0;
     let errors = 0;
+    let unpriced = 0;
+    let totalLatencyMs = 0;
+    let latencySamples = 0;
 
     for (const row of rollups) {
       const cost = Number(row.costUsd);
@@ -110,6 +145,9 @@ export async function getDashboardData(
       cacheTokens += row.cacheReadTokens;
       requests += row.requestCount;
       errors += row.errorCount;
+      unpriced += row.unpricedCount;
+      totalLatencyMs += row.totalLatencyMs;
+      latencySamples += row.latencySampleCount;
       const key = row.hour.toISOString();
       const point = seriesByHour.get(key) ?? {
         label: new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "2-digit" }).format(row.hour),
@@ -165,18 +203,22 @@ export async function getDashboardData(
         cacheSavings: inputTokens > 0 ? spend * (cacheTokens / inputTokens) * 0.6 : 0,
         budgetUsed,
         errorRate: requests > 0 ? (errors / requests) * 100 : 0,
+        averageLatencyMs: latencySamples > 0 ? totalLatencyMs / latencySamples : null,
+        pricedCoverage: requests > 0 ? ((requests - unpriced) / requests) * 100 : 100,
       },
       series: Array.from(seriesByHour.values()),
       models,
       recent: recentRows.map((row) => ({
         id: row.id,
         occurredAt: row.occurredAt.toISOString(),
-        project: projectNames.get(row.projectId) ?? "Unknown project",
+        project: projectNames.get(row.projectId) ?? "Unknown app",
         provider: row.provider,
         model: row.model,
         feature: row.feature ?? "—",
         tokens: row.inputTokens + row.outputTokens,
         cost: row.costUsd === null ? null : Number(row.costUsd),
+        costSource: row.costSource,
+        latencyMs: row.latencyMs,
         status: row.status,
       })),
       projects: projectRows,

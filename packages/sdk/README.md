@@ -8,6 +8,17 @@ Server-side TypeScript SDK for sending provider-neutral AI usage events to Tokly
 npm install tokly-sdk
 ```
 
+To connect developer AI tools on a workstation:
+
+```bash
+npm install -g tokly-sdk
+tokly init
+```
+
+The wizard detects Cursor, Codex, Claude Code, Gemini CLI, and Ollama, explains monitoring fidelity, previews every file and login-service change, and applies only confirmed changes. It then opens Tokly in your browser: sign in, choose the Tokly app to connect, and the terminal continues automatically. You never copy a project key or machine credential. Machine credentials are stored only in macOS Keychain, Windows Credential Manager, or Linux Secret Service; setup stops if the OS credential store is unavailable.
+
+Use `tokly status`, `tokly tools`, `tokly start`, `tokly stop`, or `tokly disconnect` to manage the connector. Claude Code and Gemini CLI report exact token metrics. Cursor, Codex, and Ollama report lifecycle activity only and never invent token or cost values.
+
 ## Usage
 
 ```ts
@@ -44,8 +55,30 @@ The `tokly-sdk/adapters` entry point includes helpers for:
 - OpenAI Responses usage
 - Anthropic Messages usage
 - Google Gemini usage metadata
+- OpenRouter Chat Completions and Responses usage, including provider-reported cost
+- Ollama Generate and Chat usage, including token counts and latency
 
 You can also call `capture()` with a provider-neutral usage event directly.
+
+```ts
+import { fromOllamaResponse, fromOpenRouterResponse } from "tokly-sdk/adapters";
+
+tokly.capture(fromOpenRouterResponse({
+  model: response.model,
+  usage: response.usage,
+  dimensions: { environment: "production", feature: "assistant" },
+}));
+
+tokly.capture(fromOllamaResponse({
+  model: ollamaResponse.model,
+  prompt_eval_count: ollamaResponse.prompt_eval_count,
+  eval_count: ollamaResponse.eval_count,
+  total_duration: ollamaResponse.total_duration,
+  dimensions: { environment: "local", feature: "assistant" },
+}));
+```
+
+OpenRouter cost is taken from its response. Ollama events intentionally omit `costUsd`; Tokly records local token usage and latency without inventing a compute price.
 
 ## License
 

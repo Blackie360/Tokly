@@ -1,0 +1,19 @@
+.code {
+  background: var(--ink);
+  color: var(--surface);
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  letter-spacing: 0.16em;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  text-align: center;
+}
+
+.details { border-block: 1px solid var(--line); margin: 0 0 1.5rem; }
+.details div { display: grid; gap: 1rem; grid-template-columns: 6rem 1fr; padding: 0.75rem 0; }
+.details div + div { border-top: 1px solid var(--line); }
+.details dt { color: var(--muted); font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; }
+.details dd { margin: 0; overflow-wrap: anywhere; }
+.privacy { border-top: 1px solid var(--line); color: var(--muted); font-size: var(--text-xs); margin-top: 1.5rem !important; padding-top: 1rem; }
+.success { align-items: center; background: var(--success); color: white; display: flex; font-size: 2rem; height: 64px; justify-content: center; margin-top: 1.5rem; width: 64px; }
+.command { background: var(--ink); color: var(--surface); font-family: var(--font-mono); margin-top: 1.5rem; padding: 1rem; }

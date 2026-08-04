@@ -4,7 +4,9 @@
 
 Provision PostgreSQL, set the variables in `.env.example`, run `npm run db:migrate` as a release step, and deploy the Next.js Node runtime behind HTTPS. Use separate database roles for migrations and the application in hardened environments; the application role needs normal DML access and must remain subject to the forced RLS policies.
 
-Set `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, and `DATABASE_URL`. Add GitHub OAuth only after its callback URL is configured. Add `RESEND_API_KEY` and a verified `ALERT_FROM_EMAIL` to enable email; in-app notifications work without Resend. Never log Authorization headers or raw project keys at the reverse proxy.
+Set `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, and `DATABASE_URL`. Add GitHub and Google OAuth only after their callback URLs are configured. Add `RESEND_API_KEY` and a verified `ALERT_FROM_EMAIL` to enable email; in-app notifications work without Resend. Never log Authorization headers or raw project keys at the reverse proxy.
+
+Use `pnpm db:migrate` for the local Docker database. For Neon, keep a direct, non-pooled connection in `NEON_MIGRATION_DATABASE_URL` in `.env.local` or the deployment environment. Run `pnpm db:migrate:neon:check` to validate the target and migration files without connecting, then run `pnpm db:migrate:neon` to apply pending migrations. Keep the pooled Neon URL in Vercel's `DATABASE_URL` for normal application traffic, and never commit either connection string.
 
 After deployment, send a test event, retry the same event ID, verify `accepted: 0, duplicates: 1`, inspect the dashboard rollup, revoke the test key, and confirm it receives HTTP 401.
 

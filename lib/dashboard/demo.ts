@@ -19,6 +19,8 @@ export const demoDashboard: DashboardData = {
     cacheSavings: 31.08,
     budgetUsed: 61.5,
     errorRate: 1.28,
+    averageLatencyMs: 842,
+    pricedCoverage: 99.4,
   },
   series: values.map(([input, output, cache, cost], index) => ({
     label: `${String(index).padStart(2, "0")}:00`,
@@ -34,11 +36,11 @@ export const demoDashboard: DashboardData = {
     { model: "gpt-5.5-mini", provider: "openai", requests: 842, tokens: 1_127_000, cost: 11.79, share: 6.3 },
   ],
   recent: [
-    { id: "evt_92AQ", occurredAt: "2026-08-04T10:41:37.000Z", project: "Support copilot", provider: "openai", model: "gpt-5.5", feature: "answer-ticket", tokens: 8431, cost: 0.0382, status: "success" },
-    { id: "evt_92AP", occurredAt: "2026-08-04T10:41:21.000Z", project: "Research agent", provider: "anthropic", model: "claude-sonnet-5", feature: "source-review", tokens: 12409, cost: 0.0714, status: "success" },
-    { id: "evt_92AN", occurredAt: "2026-08-04T10:40:54.000Z", project: "Support copilot", provider: "google", model: "gemini-3.5-flash", feature: "classify", tokens: 1187, cost: 0.0011, status: "success" },
-    { id: "evt_92AM", occurredAt: "2026-08-04T10:40:12.000Z", project: "Document API", provider: "openai", model: "gpt-5.5-mini", feature: "extract", tokens: 0, cost: null, status: "error" },
-    { id: "evt_92AL", occurredAt: "2026-08-04T10:39:44.000Z", project: "Research agent", provider: "anthropic", model: "claude-sonnet-5", feature: "synthesis", tokens: 17523, cost: 0.1082, status: "success" },
+    { id: "evt_92AQ", occurredAt: "2026-08-04T10:41:37.000Z", project: "Support copilot", provider: "openai", model: "gpt-5.5", feature: "answer-ticket", tokens: 8431, cost: 0.0382, costSource: "reported", latencyMs: 724, status: "success" },
+    { id: "evt_92AP", occurredAt: "2026-08-04T10:41:21.000Z", project: "Research agent", provider: "anthropic", model: "claude-sonnet-5", feature: "source-review", tokens: 12409, cost: 0.0714, costSource: "calculated", latencyMs: 1248, status: "success" },
+    { id: "evt_92AN", occurredAt: "2026-08-04T10:40:54.000Z", project: "Support copilot", provider: "google", model: "gemini-3.5-flash", feature: "classify", tokens: 1187, cost: 0.0011, costSource: "reported", latencyMs: 318, status: "success" },
+    { id: "evt_92AM", occurredAt: "2026-08-04T10:40:12.000Z", project: "Document API", provider: "openai", model: "gpt-5.5-mini", feature: "extract", tokens: 0, cost: null, costSource: "unpriced", latencyMs: 8_412, status: "error" },
+    { id: "evt_92AL", occurredAt: "2026-08-04T10:39:44.000Z", project: "Research agent", provider: "anthropic", model: "claude-sonnet-5", feature: "synthesis", tokens: 17523, cost: 0.1082, costSource: "calculated", latencyMs: 1_532, status: "success" },
   ],
   projects: [
     { id: "00000000-0000-4000-8000-000000000001", name: "Support copilot", slug: "support-copilot" },

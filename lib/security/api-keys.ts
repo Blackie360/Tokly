@@ -27,3 +27,37 @@ export function readBearerToken(request: Request) {
   const token = authorization.slice(7).trim();
   return /^tok_(live|test)_[A-Za-z0-9_-]{40,}$/.test(token) ? token : null;
 }
+
+export function generateMachineCredential() {
+  const rawKey = `tok_agent_${randomBytes(32).toString("base64url")}`;
+  return { rawKey, prefix: rawKey.slice(0, 18), hash: hashProjectKey(rawKey) };
+}
+
+export function generatePairingCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(8);
+  const body = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  const rawCode = `TLY-${body.slice(0, 4)}-${body.slice(4)}`;
+  return { rawCode, hash: hashProjectKey(rawCode) };
+}
+
+export function generateMachineDeviceAuthorization() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(8);
+  const body = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  const userCode = `${body.slice(0, 4)}-${body.slice(4)}`;
+  const deviceCode = randomBytes(32).toString("base64url");
+  return {
+    deviceCode,
+    deviceCodeHash: hashProjectKey(deviceCode),
+    userCode,
+    userCodeHash: hashProjectKey(userCode),
+  };
+}
+
+export function readMachineBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const token = authorization.slice(7).trim();
+  return /^tok_agent_[A-Za-z0-9_-]{40,}$/.test(token) ? token : null;
+}
