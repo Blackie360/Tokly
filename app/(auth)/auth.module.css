@@ -1,0 +1,51 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.7fr);
+  min-height: 100vh;
+}
+
+.context {
+  background: var(--ink);
+  color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: clamp(2rem, 5vw, 5rem);
+  position: relative;
+}
+
+.context::after {
+  border: 70px solid var(--accent);
+  border-radius: 50%;
+  bottom: -180px;
+  content: "";
+  height: 420px;
+  opacity: 0.85;
+  position: absolute;
+  right: -160px;
+  width: 420px;
+}
+
+.context h1 { font-size: clamp(2.7rem, 6vw, 6rem); letter-spacing: -0.07em; line-height: 0.92; margin: 3rem 0; max-width: 9ch; }
+.context p { color: color-mix(in srgb, var(--surface) 65%, transparent); max-width: 48ch; }
+
+.formPanel {
+  align-content: center;
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+  display: grid;
+  padding: clamp(1.5rem, 5vw, 5rem);
+}
+
+.formCard { margin: 0 auto; max-width: 440px; width: 100%; }
+.formCard h2 { font-size: var(--text-xl); letter-spacing: -0.04em; margin: 1rem 0 0.5rem; }
+.formCard > p { color: var(--muted); margin: 0 0 2rem; }
+
+@media (max-width: 780px) {
+  .shell { grid-template-columns: 1fr; }
+  .context { min-height: 330px; }
+  .context h1 { font-size: 3.4rem; margin: 2rem 0 0; }
+  .context p { display: none; }
+  .formPanel { border-left: 0; border-top: 1px solid var(--line-strong); min-height: calc(100vh - 330px); }
+}

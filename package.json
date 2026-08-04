@@ -1,32 +1,54 @@
 {
-  "name": "agentcursor",
-  "version": "0.0.0",
+  "name": "tokly",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "imports": {
-    "#*": "./agent/*",
-    "#evals/*": "./evals/*"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "eve build",
-    "dev": "eve dev",
-    "start": "eve start",
-    "typecheck": "tsc"
+    "build": "next build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:retention": "tsx scripts/retention.ts",
+    "dev": "next dev",
+    "lint": "eslint .",
+    "start": "next start",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:integration": "vitest run tests/postgres.integration.test.ts",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vercel/connect": "0.4.0",
-    "ai": "^7.0.26",
-    "eve": "^0.27.0",
-    "zod": "4.4.3"
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "better-auth": "latest",
+    "drizzle-orm": "latest",
+    "next": "latest",
+    "postgres": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest",
+    "resend": "latest",
+    "server-only": "latest",
+    "zod": "latest"
   },
   "devDependencies": {
-    "@types/node": "24.x",
-    "typescript": "7.0.2"
-  },
-  "overrides": {
-    "ai": "^7.0.26"
+    "@next/env": "^16.3.0",
+    "@playwright/test": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "drizzle-kit": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "tsx": "latest",
+    "typescript": "^5.9.3",
+    "vitest": "latest"
   },
   "engines": {
-    "node": "24.x"
+    "node": ">=22"
   }
-
 }

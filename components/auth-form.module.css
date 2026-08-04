@@ -1,0 +1,22 @@
+.modeSwitch {
+  border: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 1.5rem;
+  padding: 3px;
+}
+
+.modeSwitch button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  min-height: 40px;
+  text-transform: uppercase;
+}
+
+.modeSwitch button[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--surface);
+}

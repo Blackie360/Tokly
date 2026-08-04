@@ -1,0 +1,302 @@
+@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --bg: #e9ece9;
+  --surface: #f7f8f5;
+  --surface-2: #dfe3df;
+  --surface-3: #cdd3cf;
+  --ink: #111512;
+  --muted: #5b655f;
+  --line: #aeb7b1;
+  --line-strong: #59645d;
+  --accent: #dc8b00;
+  --accent-ink: #201500;
+  --teal: #147d73;
+  --danger: #b42318;
+  --warning: #a05b00;
+  --success: #14733d;
+  --info: #2366a8;
+  --shadow: 0 12px 30px rgb(18 25 20 / 9%);
+  --radius-sm: 3px;
+  --radius-md: 7px;
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --text-xs: 0.72rem;
+  --text-sm: 0.84rem;
+  --text-md: 1rem;
+  --text-lg: clamp(1.15rem, 2vw, 1.4rem);
+  --text-xl: clamp(1.6rem, 3vw, 2.35rem);
+  --text-2xl: clamp(2.7rem, 7vw, 6.9rem);
+  --dur-1: 120ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #0d1210;
+  --surface: #151b18;
+  --surface-2: #1e2722;
+  --surface-3: #2c3731;
+  --ink: #ecf0eb;
+  --muted: #9ca8a0;
+  --line: #344039;
+  --line-strong: #66736b;
+  --accent: #f2a719;
+  --accent-ink: #1b1100;
+  --teal: #55b8ac;
+  --danger: #ff7369;
+  --warning: #f2a719;
+  --success: #56c881;
+  --info: #6eace9;
+  --shadow: 0 20px 40px rgb(0 0 0 / 24%);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(90deg, transparent 49.8%, color-mix(in srgb, var(--line) 20%, transparent) 50%, transparent 50.2%) 0 0 / 48px 48px,
+    linear-gradient(0deg, transparent 49.8%, color-mix(in srgb, var(--line) 20%, transparent) 50%, transparent 50.2%) 0 0 / 48px 48px,
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 75%, white);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.sr-only {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.loading-shell { padding: clamp(1.25rem, 4vw, 3rem); }
+.loading-line,
+.loading-card,
+.loading-panel {
+  animation: loading-pulse 1.4s ease-in-out infinite alternate;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.loading-line { height: 12px; margin-bottom: 1rem; width: 220px; }
+.loading-line-short { width: 110px; }
+.loading-line-title { height: 46px; width: min(480px, 80%); }
+.loading-grid { display: grid; gap: 1px; grid-template-columns: repeat(3, 1fr); margin-top: 2.5rem; }
+.loading-card { height: 130px; }
+.loading-panel { height: 340px; margin-top: 1px; }
+
+@keyframes loading-pulse {
+  to { background: var(--surface-3); }
+}
+
+.skip-link {
+  background: var(--ink);
+  color: var(--surface);
+  left: 1rem;
+  padding: 0.75rem 1rem;
+  position: fixed;
+  top: -5rem;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.button {
+  align-items: center;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  gap: 0.55rem;
+  justify-content: center;
+  letter-spacing: 0.04em;
+  min-height: 44px;
+  padding: 0.68rem 1rem;
+  text-transform: uppercase;
+  transition: transform var(--dur-1), background var(--dur-1), color var(--dur-1);
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+.button.secondary {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.button.secondary:hover {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.button.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.eyebrow,
+.panel-label,
+.coordinate {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 0.6rem;
+}
+
+.eyebrow::before {
+  background: var(--accent);
+  content: "";
+  height: 8px;
+  width: 8px;
+}
+
+.page-frame {
+  margin: 0 auto;
+  max-width: 1500px;
+  padding: 0 2rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.field label {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  min-height: 46px;
+  padding: 0.65rem 0.75rem;
+  width: 100%;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+}
+
+.error-copy {
+  color: var(--danger);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 720px) {
+  .page-frame {
+    padding: 0 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
