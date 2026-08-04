@@ -1,8 +1,13 @@
 name: Publish SDK
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-sdk-main
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -10,44 +15,74 @@ permissions:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, 'sdk-v')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: npm
+          package-manager-cache: false
 
       - name: Install npm with trusted publishing support
         run: npm install --global npm@12.0.2
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify release version
+      - name: Check whether this version is already published
+        id: version
         shell: bash
         run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./packages/sdk/package.json').name")"
           package_version="$(node -p "require('./packages/sdk/package.json').version")"
-          tag_version="${GITHUB_REF_NAME#sdk-v}"
-          if [[ "${package_version}" != "${tag_version}" ]]; then
-            echo "Release tag ${tag_version} does not match package version ${package_version}."
-            exit 1
+          published_versions="$(npm view "${package_name}" versions --json)"
+
+          if PACKAGE_VERSION="${package_version}" PUBLISHED_VERSIONS="${published_versions}" node --input-type=commonjs -e '
+            const versions = JSON.parse(process.env.PUBLISHED_VERSIONS || "[]");
+            const list = Array.isArray(versions) ? versions : [versions];
+            process.exit(list.includes(process.env.PACKAGE_VERSION) ? 0 : 1);
+          '; then
+            should_publish=false
+          else
+            should_publish=true
           fi
 
+          echo "package_name=${package_name}" >> "${GITHUB_OUTPUT}"
+          echo "package_version=${package_version}" >> "${GITHUB_OUTPUT}"
+          echo "should_publish=${should_publish}" >> "${GITHUB_OUTPUT}"
+
+      - name: Skip an existing version
+        if: steps.version.outputs.should_publish == 'false'
+        run: |
+          echo "### SDK publish skipped" >> "${GITHUB_STEP_SUMMARY}"
+          echo "\`${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.package_version }}\` is already on npm." >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Install dependencies
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm ci
+
       - name: Run SDK tests
+        if: steps.version.outputs.should_publish == 'true'
         run: npm test -- tests/sdk.test.ts
 
       - name: Build SDK
+        if: steps.version.outputs.should_publish == 'true'
         run: npm run build --workspace tokly-sdk
 
       - name: Inspect package contents
+        if: steps.version.outputs.should_publish == 'true'
         run: npm pack --workspace tokly-sdk --dry-run
 
       - name: Publish to npm
+        if: steps.version.outputs.should_publish == 'true'
         run: npm publish --workspace tokly-sdk --access public
+
+      - name: Record the published version
+        if: steps.version.outputs.should_publish == 'true' && success()
+        run: |
+          echo "### SDK published" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Published \`${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.package_version }}\` to npm." >> "${GITHUB_STEP_SUMMARY}"
