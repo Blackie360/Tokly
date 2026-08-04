@@ -44,7 +44,7 @@ jobs:
         run: npm test
 
       - name: Build SDK
-        run: npm run build --workspace tokly
+        run: npm run build --workspace @blackie360/tokly
 
       - name: Build application
         run: npm run build
