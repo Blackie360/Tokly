@@ -4,12 +4,12 @@ import { formatCompact, formatCurrency, formatDateTime, formatDuration } from "@
 import { UsageChart } from "./usage-chart";
 import styles from "./dashboard.module.css";
 
-export function PageHeader({ eyebrow, title, description, updatedAt, level = 1 }: { eyebrow: string; title: string; description: string; updatedAt?: string; level?: 1 | 2 }) {
+export function PageHeader({ eyebrow, title, description, updatedAt, timestampLabel, level = 1 }: { eyebrow: string; title: string; description: string; updatedAt?: string; timestampLabel?: string; level?: 1 | 2 }) {
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className={styles.pageHeader}>
       <div><div className="eyebrow">{eyebrow}</div><Heading>{title}</Heading></div>
-      <div>{description ? <p>{description}</p> : null}{updatedAt ? <div className={styles.timestamp}>Updated {formatDateTime(updatedAt)}</div> : null}</div>
+      <div>{description ? <p>{description}</p> : null}{timestampLabel ? <div className={styles.timestamp}>{timestampLabel}</div> : updatedAt ? <div className={styles.timestamp}>Updated {formatDateTime(updatedAt)}</div> : null}</div>
     </header>
   );
 }
@@ -52,11 +52,13 @@ export function DashboardOverview({
   usageHref,
   projectsHref,
   hasUsage = data.metrics.requests > 0,
+  timestampLabel,
 }: {
   data: DashboardData;
   usageHref: string;
   projectsHref?: string;
   hasUsage?: boolean;
+  timestampLabel?: string;
 }) {
   const latest = data.series.at(-1);
   const previous = data.series.at(-2);
@@ -84,7 +86,7 @@ export function DashboardOverview({
 
   return (
     <>
-      <PageHeader eyebrow="Operations snapshot / 01" title="Usage overview" description="A cost and token ledger across every instrumented AI workload." updatedAt={data.updatedAt} />
+      <PageHeader eyebrow="Operations snapshot / 01" title="Usage overview" description="A cost and token ledger across every instrumented AI workload." updatedAt={data.updatedAt} timestampLabel={timestampLabel} />
 
       <section className={styles.velocityRail} aria-label="Usage velocity">
         <div className={styles.velocityLead}><span className={styles.pulse} aria-hidden="true" /><div><span>Current cost velocity</span><strong>{formatCurrency(velocity)}/hr</strong></div></div>

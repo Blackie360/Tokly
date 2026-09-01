@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Live demo" };
 export default function DemoPage() {
   return (
     <AppShell workspaceName="Blackbird Labs" workspaceSlug="demo" userName="Demo operator" role="observer" demo>
-      <DashboardOverview data={demoDashboard} usageHref="#usage" />
+      <DashboardOverview data={demoDashboard} usageHref="#usage" timestampLabel="Illustrative sample data" />
 
       <section id="usage" className={dashboardStyles.section} style={{ scrollMarginTop: 120 }}>
         <PageHeader eyebrow="Usage explorer / 02" title="Request ledger" description="A privacy-safe event trail with model, feature, token, cost, and status attribution." level={2} />

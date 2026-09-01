@@ -40,7 +40,7 @@ export function AppShell({
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.brandRow}><Logo /><span className={styles.version}>v0.1</span><div className={styles.mobileControls}><ThemeToggle />{demo ? <Link className="button" href="/sign-in?mode=sign-up">Create workspace</Link> : null}</div></div>
+        <div className={styles.brandRow}><Logo /><span className={styles.version}>App v0.1</span><div className={styles.mobileControls}><ThemeToggle />{demo ? <Link className="button" href="/sign-in?mode=sign-up">Create workspace</Link> : null}</div></div>
         <div className={styles.workspace}>
           <span className="panel-label">Active workspace</span>
           <strong>{workspaceName}</strong>

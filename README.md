@@ -86,14 +86,9 @@ await meter.shutdown(); // flush during a graceful process shutdown
 
 Adapters are included for the Vercel AI SDK, OpenAI Responses, Anthropic Messages, Google Gemini, OpenRouter, and Ollama response shapes. OpenRouter events retain provider-reported cost, cache, and reasoning usage. Ollama events track local token usage and latency without inventing a dollar cost. `capture()` buffers up to 100 events per request; `flush()` retries transient failures and `429` responses with exponential backoff while rejecting permanent client errors immediately.
 
-The SDK is the primary integration and does not monitor or change a developer workstation. The separate, optional `tokly-cli` package connects supported local AI tools:
+The SDK is the primary integration and does not monitor or change a developer workstation. Source for the separate, optional `tokly-cli` connector lives in [`packages/cli`](./packages/cli), but its first npm release is still pending. Do not advertise an install command until the package is available from the registry.
 
-```bash
-npm install -g tokly-cli
-tokly init
-```
-
-The CLI reports only the telemetry each tool exposes. Claude Code and Gemini CLI provide exact token metrics; Cursor, Codex, and Ollama provide lifecycle activity only. See [`packages/cli`](./packages/cli/README.md) for setup, privacy boundaries, and removal.
+Once released, the CLI will report only the telemetry each tool exposes. Claude Code and Gemini CLI provide exact token metrics; Cursor, Codex, and Ollama provide lifecycle activity only. See [`packages/cli`](./packages/cli/README.md) for its current release status and privacy boundaries.
 
 ## Cost and budgets
 

@@ -148,9 +148,9 @@ export default function HomePage() {
             <div>
               <span className="coordinate">Optional companion</span>
               <strong>Want local developer-tool activity too?</strong>
-              <p>Install the separate <span className="mono">tokly-cli</span>. The SDK remains the source of exact application usage and cost.</p>
+              <p>The separate <span className="mono">tokly-cli</span> connector is being prepared for its first npm release. The SDK remains the source of exact application usage and cost.</p>
             </div>
-            <pre className={styles.command}><code><span aria-hidden="true">$</span> npm install -g tokly-cli</code></pre>
+            <span className={styles.releaseStatus}>npm release pending</span>
           </aside>
         </div>
       </section>

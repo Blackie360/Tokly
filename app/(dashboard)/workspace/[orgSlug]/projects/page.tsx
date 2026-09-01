@@ -293,9 +293,8 @@ await tokly.shutdown();`;
                       {canManage && !machine.revokedAt ? <form action={revokeMachineConnectionAction}><input type="hidden" name="orgSlug" value={orgSlug}/><input type="hidden" name="connectionId" value={machine.id}/><ConfirmSubmitButton label="Revoke" ariaLabel={`Revoke ${machine.name}`} confirmation={`Revoke ${machine.name}? Its collector will no longer be able to send activity.`}/></form> : null}
                     </li>)}</ul> : <p className="muted">No developer machine connected.</p>}
                     {canManage ? <div>
-                      <p>Optional: connect supported local AI tools with the separate machine CLI. This does not replace the server SDK.</p>
-                      <pre className={styles.codeBlock}><code>{`npm install -g tokly-cli\ntokly init`}</code></pre>
-                      <CopyButton value={`npm install -g tokly-cli\ntokly init`} label="Copy optional CLI commands" />
+                      <p>Optional: the separate machine CLI is being prepared for its first npm release. Use the server SDK for exact application telemetry today.</p>
+                      <p className="muted mono">tokly-cli · npm release pending</p>
                     </div> : null}
                   </div>
                 </article>

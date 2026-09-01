@@ -71,12 +71,7 @@ OpenRouter cost is taken from its response. Ollama events intentionally omit `co
 
 ## Optional machine connector
 
-The SDK does not modify or monitor a developer workstation. To connect supported local AI tools, install the separate `tokly-cli` package:
-
-```bash
-npm install -g tokly-cli
-tokly init
-```
+The SDK does not modify or monitor a developer workstation. The separate `tokly-cli` connector is being prepared for its first npm release, so there is no public installation command yet. Use `tokly-sdk` for exact application telemetry today.
 
 ## Uninstall
 

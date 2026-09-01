@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { and, eq, gt, isNull } from "drizzle-orm";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { approveMachineAuthorizationAction } from "@/app/actions";
 import { Logo } from "@/components/logo";
@@ -78,9 +79,9 @@ export default async function ConnectMachinePage({ searchParams }: { searchParam
 
   return <ConnectShell>
     <div className="coordinate">TERMINAL AUTHORIZATION</div>
-    <h2>{query.error || validCode ? "Authorization expired" : "Start from your terminal"}</h2>
-    <p>{query.error || validCode ? "This link is invalid, expired, or already used. Run the setup command again." : "Run the command below. Tokly will open this page with a secure, short-lived authorization request."}</p>
-    <pre className={styles.command}><code>{`npm install -g tokly-cli\ntokly init`}</code></pre>
+    <h2>{query.error || validCode ? "Authorization expired" : "Machine connector release pending"}</h2>
+    <p>{query.error || validCode ? "This link is invalid, expired, or already used. Start a new authorization after the CLI package is released." : "The optional tokly-cli connector is being prepared for its first npm release. Use the server-side SDK for exact application telemetry today."}</p>
+    <Link className="button" href="/">Use the SDK →</Link>
   </ConnectShell>;
 }
 
