@@ -8,25 +8,27 @@ const bars = [28, 42, 34, 60, 52, 78, 68, 91, 73, 64, 84, 72, 96, 88, 100, 82];
 const setupSteps = [
   {
     number: "01",
-    title: "Create your workspace",
-    description: "Sign up for Tokly and create the workspace where your machine activity will appear.",
+    title: "Create an app key",
+    description: "Create a Tokly workspace and app, then save the server-only write key shown once.",
   },
   {
     number: "02",
-    title: "Install the Tokly CLI",
-    description: "Add the machine connector globally so the tokly command is available in your terminal.",
-    command: "npm install -g tokly-sdk",
+    title: "Install the SDK",
+    description: "Add the lightweight TypeScript package to the application that calls your model provider.",
+    code: "npm install tokly-sdk",
+    codeKind: "terminal" as const,
   },
   {
     number: "03",
-    title: "Connect from your terminal",
-    description: "Run the setup wizard. Tokly opens a secure browser sign-in and syncs your session back—no project key to copy.",
-    command: "tokly init",
+    title: "Capture real usage",
+    description: "Send provider usage through a typed adapter and attach the feature and environment that caused it.",
+    code: "tokly.capture(fromOpenAIResponse({ model, usage }));",
+    codeKind: "typescript" as const,
   },
   {
     number: "04",
-    title: "Choose what to monitor",
-    description: "Select the AI tools detected on your machine, preview the changes, and start monitoring.",
+    title: "Operate with context",
+    description: "Inspect exact tokens, attributed cost, latency, pricing coverage, and budget thresholds in Tokly.",
   },
 ];
 
@@ -47,17 +49,17 @@ export default function HomePage() {
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <div>
-              <div className="eyebrow">AI spend operations / 01</div>
+              <div className="eyebrow">AI telemetry SDK / 01</div>
               <h1>
                 Every token. <em>Accounted for.</em>
               </h1>
               <p className={styles.heroLead}>
-                See which models, features, and environments are consuming your AI budget—without
-                proxying traffic or surrendering provider credentials.
+                Instrument your AI applications with exact token, cost, latency, and feature
+                attribution—without proxying traffic or surrendering provider credentials.
               </p>
               <div className={styles.heroActions}>
                 <Link className="button" href="/sign-in?mode=sign-up">
-                  Create free workspace →
+                  Get your SDK key →
                 </Link>
                 <Link className="button secondary" href="/demo">
                   Inspect live demo
@@ -67,7 +69,7 @@ export default function HomePage() {
             <div className={styles.heroMeta} aria-label="Product guarantees">
               <div><strong>0</strong><span>prompts stored</span></div>
               <div><strong>&lt;100ms</strong><span>ingestion target</span></div>
-              <div><strong>5</strong><span>provider types</span></div>
+              <div><strong>6</strong><span>typed adapters</span></div>
             </div>
           </div>
 
@@ -95,17 +97,17 @@ export default function HomePage() {
         </section>
       </div>
 
-      <section className={styles.getStarted} aria-labelledby="get-started-heading">
+      <section className={styles.getStarted} id="sdk-setup" aria-labelledby="get-started-heading">
         <div className={`page-frame ${styles.getStartedFrame}`}>
           <div className={styles.getStartedIntro}>
             <div>
-              <div className="eyebrow">Machine setup / 02</div>
-              <h2 id="get-started-heading">From account to live monitoring in minutes.</h2>
+              <div className="eyebrow">SDK setup / 02</div>
+              <h2 id="get-started-heading">From model response to cost insight in minutes.</h2>
             </div>
             <div className={styles.getStartedCta}>
               <p>
-                The guided setup detects supported AI tools and shows every configuration change
-                before it is applied.
+                One server-side SDK captures provider-reported usage and the business context that
+                a machine-level command cannot reliably infer.
               </p>
               <Link className="button" href="/sign-in?mode=sign-up">
                 Create your account →
@@ -120,10 +122,10 @@ export default function HomePage() {
                 <div className={styles.stepContent}>
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
-                  {step.command ? (
-                    <pre className={styles.command} aria-label={`Terminal command: ${step.command}`}>
+                  {step.code ? (
+                    <pre className={styles.command} aria-label={`${step.codeKind === "terminal" ? "Terminal command" : "TypeScript example"}: ${step.code}`}>
                       <code>
-                        <span aria-hidden="true">$</span> {step.command}
+                        {step.codeKind === "terminal" ? <span aria-hidden="true">$</span> : null}{step.codeKind === "terminal" ? " " : null}{step.code}
                       </code>
                     </pre>
                   ) : null}
@@ -132,14 +134,24 @@ export default function HomePage() {
             ))}
           </ol>
 
-          <div className={styles.toolStrip} aria-label="Supported developer AI tools">
-            <span>Detects</span>
-            <span>Cursor</span>
-            <span>Codex</span>
-            <span>Claude Code</span>
-            <span>Gemini CLI</span>
+          <div className={styles.toolStrip} aria-label="Supported SDK adapters">
+            <span>Adapters</span>
+            <span>Vercel AI</span>
+            <span>OpenAI</span>
+            <span>Anthropic</span>
+            <span>Gemini</span>
+            <span>OpenRouter</span>
             <span>Ollama</span>
           </div>
+
+          <aside className={styles.connectorNote} aria-label="Optional developer machine connector">
+            <div>
+              <span className="coordinate">Optional companion</span>
+              <strong>Want local developer-tool activity too?</strong>
+              <p>Install the separate <span className="mono">tokly-cli</span>. The SDK remains the source of exact application usage and cost.</p>
+            </div>
+            <pre className={styles.command}><code><span aria-hidden="true">$</span> npm install -g tokly-cli</code></pre>
+          </aside>
         </div>
       </section>
 

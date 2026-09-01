@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { acceptsConfirmation, updateMultiSelect } from "../packages/sdk/src/prompts";
-import { applyToolConfigs, boundQueueItems, containsForbiddenFields, decodeOtlpProtobuf, deleteCredential, detectTools, normalizeOtlp, parseToolSelection, readCredential, restoreToolConfigs, sanitizeActivity, storeCredential } from "../packages/sdk/src/machine";
+import { acceptsConfirmation, updateMultiSelect } from "../packages/cli/src/prompts";
+import { applyToolConfigs, boundQueueItems, containsForbiddenFields, decodeOtlpProtobuf, deleteCredential, detectTools, normalizeOtlp, parseToolSelection, readCredential, restoreToolConfigs, sanitizeActivity, storeCredential } from "../packages/cli/src/machine";
 import { activityBatchSchema, machineUsageBatchSchema, pairMachineSchema, pollMachineAuthorizationSchema, startMachineAuthorizationSchema } from "@/lib/machines/schema";
 import { generateMachineDeviceAuthorization, hashProjectKey } from "@/lib/security/api-keys";
 
@@ -56,13 +56,13 @@ describe("machine connector privacy", () => {
   });
 
   it("requires the short-lived pairing code shape", () => {
-    const request = { code: "TLY-ABCD-2345", deviceName: "Workstation", platform: "linux", clientVersion: "0.2.0", selectedTools: ["codex"] };
+    const request = { code: "TLY-ABCD-2345", deviceName: "Workstation", platform: "linux", clientVersion: "0.1.0", selectedTools: ["codex"] };
     expect(pairMachineSchema.safeParse(request).success).toBe(true);
     expect(pairMachineSchema.safeParse({ ...request, code: "raw-project-key" }).success).toBe(false);
   });
 
   it("starts browser authorization without accepting a project key", () => {
-    const request = { deviceName: "Workstation", platform: "linux", clientVersion: "0.2.0", selectedTools: ["codex"] };
+    const request = { deviceName: "Workstation", platform: "linux", clientVersion: "0.1.0", selectedTools: ["codex"] };
     expect(startMachineAuthorizationSchema.safeParse(request).success).toBe(true);
     expect(startMachineAuthorizationSchema.safeParse({ ...request, code: "tok_live_secret" }).success).toBe(false);
     const authorization = generateMachineDeviceAuthorization();

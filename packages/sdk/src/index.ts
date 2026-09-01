@@ -3,7 +3,6 @@ import type { ToklyOptions, UsageEvent } from "./types.js";
 import { VERSION } from "./version.js";
 
 export type { ToklyOptions, UsageEvent, UsageOperation, UsageProvider } from "./types.js";
-export type { ConnectorFidelity, ConnectorStatus, MachineTool } from "./machine.js";
 
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 type QueuedEvent = UsageEvent & Required<Pick<UsageEvent, "id" | "timestamp">>;

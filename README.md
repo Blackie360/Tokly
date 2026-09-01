@@ -60,25 +60,11 @@ Request controls include a 256 KiB body limit, strict allowlisted fields, bounde
 
 ## TypeScript SDK
 
-The published npm package is server-only. Never instantiate it in browser code.
-
-To install the Tokly CLI and connect your developer machine:
+Tokly is SDK-first. Install the server-only package in each application that should report exact AI usage and business context. Never instantiate it in browser code.
 
 ```bash
-npm install -g tokly-sdk
-tokly init
+npm install tokly-sdk
 ```
-
-To uninstall it, disconnect first so Tokly can remove its collector service and owned tool
-configuration, then remove the global npm package:
-
-```bash
-tokly disconnect
-npm uninstall -g tokly-sdk
-```
-
-If you installed `tokly-sdk` only as a project dependency, remove it with
-`npm uninstall tokly-sdk` instead.
 
 ```ts
 import { createTokly } from "tokly-sdk";
@@ -99,6 +85,15 @@ await meter.shutdown(); // flush during a graceful process shutdown
 ```
 
 Adapters are included for the Vercel AI SDK, OpenAI Responses, Anthropic Messages, Google Gemini, OpenRouter, and Ollama response shapes. OpenRouter events retain provider-reported cost, cache, and reasoning usage. Ollama events track local token usage and latency without inventing a dollar cost. `capture()` buffers up to 100 events per request; `flush()` retries transient failures and `429` responses with exponential backoff while rejecting permanent client errors immediately.
+
+The SDK is the primary integration and does not monitor or change a developer workstation. The separate, optional `tokly-cli` package connects supported local AI tools:
+
+```bash
+npm install -g tokly-cli
+tokly init
+```
+
+The CLI reports only the telemetry each tool exposes. Claude Code and Gemini CLI provide exact token metrics; Cursor, Codex, and Ollama provide lifecycle activity only. See [`packages/cli`](./packages/cli/README.md) for setup, privacy boundaries, and removal.
 
 ## Cost and budgets
 

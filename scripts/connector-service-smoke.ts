@@ -1,7 +1,7 @@
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { installService, previewChanges, removeService, startService, stopService } from "../packages/sdk/src/machine";
+import { installService, previewChanges, removeService, startService, stopService } from "../packages/cli/src/machine";
 
 const directory = await mkdtemp(join(tmpdir(), "tokly-service-smoke-"));
 process.env.TOKLY_HOME = directory;

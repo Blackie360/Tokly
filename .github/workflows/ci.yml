@@ -46,6 +46,9 @@ jobs:
       - name: Build SDK
         run: npm run build --workspace tokly-sdk
 
+      - name: Build optional machine CLI
+        run: npm run build --workspace tokly-cli
+
       - name: Build application
         run: npm run build
 
@@ -63,6 +66,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build --workspace tokly-sdk
+      - run: npm run build --workspace tokly-cli
       - name: Isolated login-service lifecycle
         run: node --import tsx scripts/connector-service-smoke.ts

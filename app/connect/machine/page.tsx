@@ -80,7 +80,7 @@ export default async function ConnectMachinePage({ searchParams }: { searchParam
     <div className="coordinate">TERMINAL AUTHORIZATION</div>
     <h2>{query.error || validCode ? "Authorization expired" : "Start from your terminal"}</h2>
     <p>{query.error || validCode ? "This link is invalid, expired, or already used. Run the setup command again." : "Run the command below. Tokly will open this page with a secure, short-lived authorization request."}</p>
-    <pre className={styles.command}><code>tokly init</code></pre>
+    <pre className={styles.command}><code>{`npm install -g tokly-cli\ntokly init`}</code></pre>
   </ConnectShell>;
 }
 

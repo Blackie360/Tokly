@@ -218,7 +218,7 @@
   display: grid;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin-top: 1px;
   text-align: center;
   text-transform: uppercase;
@@ -227,6 +227,33 @@
 .toolStrip span { padding: 1rem 0.75rem; }
 .toolStrip span + span { border-left: 1px solid var(--line); }
 .toolStrip span:first-child { background: var(--accent); color: var(--ink); }
+
+.connectorNote {
+  align-items: center;
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+  padding: 1.25rem;
+}
+
+.connectorNote strong {
+  display: block;
+  font-size: var(--text-md);
+  margin-top: 0.35rem;
+}
+
+.connectorNote p {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin: 0.35rem 0 0;
+}
+
+.connectorNote .command {
+  margin: 0;
+}
 
 .principles {
   background: var(--ink);
@@ -249,9 +276,10 @@
   .setupSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .setupStep:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
   .setupStep:nth-child(4) { border-top: 1px solid var(--line); }
-  .toolStrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .toolStrip span:nth-child(4) { border-left: 0; border-top: 1px solid var(--line); }
+  .toolStrip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .toolStrip span:nth-child(5) { border-left: 0; }
   .toolStrip span:nth-child(n + 5) { border-top: 1px solid var(--line); }
+  .connectorNote { align-items: start; grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {

@@ -1,0 +1,86 @@
+name: Publish optional machine CLI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish-cli
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NPM_CONFIG_FETCH_RETRIES: 5
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: 10000
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Check whether this version is already published
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./packages/cli/package.json').name")"
+          package_version="$(node -p "require('./packages/cli/package.json').version")"
+          published_versions="$(npm view "${package_name}" versions --json 2>/dev/null || printf '[]')"
+
+          if PACKAGE_VERSION="${package_version}" PUBLISHED_VERSIONS="${published_versions}" node --input-type=commonjs -e '
+            const versions = JSON.parse(process.env.PUBLISHED_VERSIONS || "[]");
+            const list = Array.isArray(versions) ? versions : [versions];
+            process.exit(list.includes(process.env.PACKAGE_VERSION) ? 0 : 1);
+          '; then
+            should_publish=false
+          else
+            should_publish=true
+          fi
+
+          echo "package_name=${package_name}" >> "${GITHUB_OUTPUT}"
+          echo "package_version=${package_version}" >> "${GITHUB_OUTPUT}"
+          echo "should_publish=${should_publish}" >> "${GITHUB_OUTPUT}"
+
+      - name: Skip an existing version
+        if: steps.version.outputs.should_publish == 'false'
+        run: |
+          echo "### CLI publish skipped" >> "${GITHUB_STEP_SUMMARY}"
+          echo "\`${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.package_version }}\` is already on npm." >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Install dependencies
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm ci
+
+      - name: Run machine connector tests
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm test -- tests/machine.test.ts
+
+      - name: Build CLI
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm run build --workspace tokly-cli
+
+      - name: Inspect package contents
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm pack --workspace tokly-cli --dry-run
+
+      - name: Publish to npm
+        if: steps.version.outputs.should_publish == 'true'
+        run: npm publish --workspace tokly-cli --access public
+
+      - name: Record the published version
+        if: steps.version.outputs.should_publish == 'true' && success()
+        run: |
+          echo "### CLI published" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Published \`${{ steps.version.outputs.package_name }}@${{ steps.version.outputs.package_version }}\` to npm." >> "${GITHUB_STEP_SUMMARY}"

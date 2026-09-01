@@ -1,9 +1,10 @@
 # Deployment
 
-Tokly uses two GitHub Actions workflows:
+Tokly uses three GitHub Actions workflows:
 
 - `CI` validates pull requests and pushes to `main`.
-- `Publish SDK` publishes the `tokly-sdk` npm package from GitHub releases tagged `sdk-v<version>`.
+- `Publish SDK` publishes a new `tokly-sdk` version after it reaches `main`.
+- `Publish optional machine CLI` publishes `tokly-cli` only when manually dispatched.
 
 ## Vercel web deployments
 
@@ -31,10 +32,11 @@ Trusted publishing uses GitHub OIDC, so the workflow does not store an npm token
 
 For a release:
 
-1. Update `packages/sdk/package.json` to the intended version and commit it.
+1. Update `packages/sdk/package.json` and `packages/sdk/src/version.ts` to the intended version and commit them.
 2. Push the commit to `main` and wait for CI to pass.
-3. Create a GitHub release tagged `sdk-v<version>`, such as `sdk-v0.2.0`.
-4. The workflow verifies that the tag and package versions match before publishing.
+3. The workflow checks npm and publishes only when that version does not already exist.
+
+The optional `tokly-cli` package has its own version in `packages/cli/package.json` and `packages/cli/src/version.ts`. Configure `publish-cli.yml` as its trusted publisher, then manually dispatch `Publish optional machine CLI` when a reviewed CLI version is ready. Keeping this separate prevents an SDK release from silently changing workstation configuration behavior.
 
 ## Rollback
 

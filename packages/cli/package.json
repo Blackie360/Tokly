@@ -1,0 +1,48 @@
+{
+  "name": "tokly-cli",
+  "version": "0.1.0",
+  "description": "Optional privacy-preserving Tokly connector for developer AI tools.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "Blackie",
+  "homepage": "https://github.com/Blackie360/Tokly#readme",
+  "bugs": {
+    "url": "https://github.com/Blackie360/Tokly/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Blackie360/Tokly.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "ai",
+    "observability",
+    "cli",
+    "cursor",
+    "codex",
+    "claude-code",
+    "gemini-cli",
+    "ollama"
+  ],
+  "files": [
+    "dist",
+    "src/windows-secret.ps1",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "tokly": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "node --input-type=commonjs -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json && node --input-type=commonjs -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

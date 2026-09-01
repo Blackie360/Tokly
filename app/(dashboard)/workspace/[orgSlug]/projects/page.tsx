@@ -98,13 +98,31 @@ export default async function ProjectsPage({
   -H "Authorization: Bearer ${oneTimeKey?.rawKey ?? "YOUR_APP_KEY"}" \\
   -H "Content-Type: application/json" \\
   -d '{"events":[{"id":"evt_001","timestamp":"${new Date().toISOString()}","provider":"openai","model":"gpt-5.5","operation":"generation","usage":{"inputTokens":1200,"outputTokens":240},"dimensions":{"environment":"production","feature":"assistant"}}]}'`;
+  const sdkInstall = "npm install tokly-sdk";
+  const sdkExample = `import { createTokly } from "tokly-sdk";
+import { fromOpenAIResponse } from "tokly-sdk/adapters";
+
+const tokly = createTokly({
+  apiKey: process.env.TOKLY_API_KEY!,
+});
+
+tokly.capture(fromOpenAIResponse({
+  model: response.model,
+  usage: response.usage,
+  dimensions: {
+    environment: "production",
+    feature: "assistant",
+  },
+}));
+
+await tokly.shutdown();`;
 
   return (
     <>
       <PageHeader
         eyebrow={oneTimeKey ? "Setup · final step" : "Apps"}
         title={oneTimeKey ? `Connect ${oneTimeKey.projectName}` : "Apps"}
-        description={oneTimeKey ? "Save the key, send one event, and let Tokly confirm the connection." : "Create apps and manage their write keys."}
+        description={oneTimeKey ? "Save the key, install the SDK, and instrument your first AI response." : "Create apps and manage their server-side SDK keys."}
       />
 
       {oneTimeKey ? (
@@ -114,18 +132,27 @@ export default async function ProjectsPage({
           <article className={projectStyles.setupStep}>
             <span className={projectStyles.stepNumber}>2</span>
             <div>
-              <h3>Send one test event</h3>
-              <p>Copy this complete command into a terminal. Your new key is already included.</p>
-              <pre className={styles.codeBlock}><code>{curl}</code></pre>
-              <CopyButton value={curl} label="Copy test command" />
+              <h3>Install the TypeScript SDK</h3>
+              <p>Add Tokly to the server application that receives usage from your AI provider.</p>
+              <pre className={styles.codeBlock}><code>{sdkInstall}</code></pre>
+              <CopyButton value={sdkInstall} label="Copy install command" />
             </div>
           </article>
           <article className={projectStyles.setupStep}>
             <span className={projectStyles.stepNumber}>3</span>
             <div>
+              <h3>Capture the provider response</h3>
+              <p>Keep the key in <span className="mono">TOKLY_API_KEY</span> on your server, then attach usage where the response is available.</p>
+              <pre className={styles.codeBlock}><code>{sdkExample}</code></pre>
+              <CopyButton value={sdkExample} label="Copy SDK example" />
+            </div>
+          </article>
+          <article className={projectStyles.setupStep}>
+            <span className={projectStyles.stepNumber}>4</span>
+            <div>
               <h3>See your first event</h3>
-              <p>{oneTimeKeyUsed ? "Event received. Your dashboard is ready." : "After the command succeeds, check the connection."}</p>
-              {query.status === "waiting" && !oneTimeKeyUsed ? <p className={projectStyles.setupStatus} role="status">No event yet. Run the command above, then check again.</p> : null}
+              <p>{oneTimeKeyUsed ? "Event received. Your dashboard is ready." : "Run one instrumented AI request, then check the connection."}</p>
+              {query.status === "waiting" && !oneTimeKeyUsed ? <p className={projectStyles.setupStatus} role="status">No SDK event yet. Run one instrumented request, then check again.</p> : null}
               <form action={verifyKeySetupAction}>
                 <input type="hidden" name="orgSlug" value={orgSlug} />
                 <div className={projectStyles.setupActions}>
@@ -266,9 +293,9 @@ export default async function ProjectsPage({
                       {canManage && !machine.revokedAt ? <form action={revokeMachineConnectionAction}><input type="hidden" name="orgSlug" value={orgSlug}/><input type="hidden" name="connectionId" value={machine.id}/><ConfirmSubmitButton label="Revoke" ariaLabel={`Revoke ${machine.name}`} confirmation={`Revoke ${machine.name}? Its collector will no longer be able to send activity.`}/></form> : null}
                     </li>)}</ul> : <p className="muted">No developer machine connected.</p>}
                     {canManage ? <div>
-                      <p>Run the setup wizard. It opens Tokly in your browser so you can sign in and choose this app—no key to copy.</p>
-                      <pre className={styles.codeBlock}><code>{`npm install -g tokly-sdk\ntokly init`}</code></pre>
-                      <CopyButton value={`npm install -g tokly-sdk\ntokly init`} label="Copy setup commands" />
+                      <p>Optional: connect supported local AI tools with the separate machine CLI. This does not replace the server SDK.</p>
+                      <pre className={styles.codeBlock}><code>{`npm install -g tokly-cli\ntokly init`}</code></pre>
+                      <CopyButton value={`npm install -g tokly-cli\ntokly init`} label="Copy optional CLI commands" />
                     </div> : null}
                   </div>
                 </article>

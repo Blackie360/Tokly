@@ -19,14 +19,14 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       <section className={styles.context}>
         <Logo />
         <div><div className="eyebrow">Two-minute setup</div><h1>One app. One key. Clear costs.</h1></div>
-        <aside className={styles.cliPrompt} aria-labelledby="cli-prompt-heading">
+        <aside className={styles.cliPrompt} aria-labelledby="sdk-prompt-heading">
           <div className={styles.cliPromptHeader}>
-            <span className="coordinate">Next · connect your machine</span>
-            <span className={styles.cliBadge}>CLI</span>
+            <span className="coordinate">Next · instrument your app</span>
+            <span className={styles.cliBadge}>SDK</span>
           </div>
-          <strong id="cli-prompt-heading">Start monitoring from your terminal</strong>
-          <pre><code>{`npm install -g tokly-sdk\ntokly init`}</code></pre>
-          <p>After your workspace is ready, run the wizard. Tokly opens your browser for secure sign-in—no project key to copy.</p>
+          <strong id="sdk-prompt-heading">Add exact usage telemetry</strong>
+          <pre><code>npm install tokly-sdk</code></pre>
+          <p>After your workspace is ready, Tokly reveals one server-only key and a typed integration example for your application.</p>
         </aside>
         <p className="mono">A workspace holds your team and the AI apps you want to track.</p>
       </section>

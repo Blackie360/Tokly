@@ -6,7 +6,8 @@
 - Dashboard mutations are Server Actions that re-check workspace membership and owner/admin permissions.
 - Better Auth is exposed at `/api/auth/[...all]`.
 - External telemetry is exposed only at `POST /api/v1/events`.
-- The SDK and write keys are server-only. Browser clients must send usage through their own backend.
+- The `tokly-sdk` package and write keys are server-only. Browser clients must send usage through their own backend.
+- The optional `tokly-cli` package is a separate workstation connector with short-lived browser authorization and encrypted local credentials; it is not required for SDK ingestion.
 
 ## Tenant isolation
 

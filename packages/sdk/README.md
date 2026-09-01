@@ -1,38 +1,11 @@
 # tokly-sdk
 
-Server-side TypeScript SDK for sending provider-neutral AI usage events to Tokly. It records token counts and operational metadata only—never prompts, completions, files, or provider credentials.
+The server-side TypeScript SDK for Tokly. Instrument AI workloads with exact token counts, cost, latency, model, feature, environment, user, trace, and session attribution—without proxying model traffic or sending prompts, completions, files, or provider credentials.
 
 ## Install
 
 ```bash
 npm install tokly-sdk
-```
-
-To connect developer AI tools on a workstation:
-
-```bash
-npm install -g tokly-sdk
-tokly init
-```
-
-The wizard detects Cursor, Codex, Claude Code, Gemini CLI, and Ollama, explains monitoring fidelity, and lets you choose tools with the arrow keys, Space, and Enter. It previews every file and login-service change before applying anything. It then opens Tokly in your browser: sign in, choose the Tokly app to connect, and the terminal continues automatically. You never copy a project key or machine credential. Machine credentials are stored only in macOS Keychain, Windows Credential Manager, Linux Secret Service, or an initialized Linux `pass` store; setup stops if no supported encrypted credential store is available.
-
-Use `tokly status`, `tokly tools`, `tokly start`, `tokly stop`, or `tokly disconnect` to manage the connector. Claude Code and Gemini CLI report exact token metrics. Cursor, Codex, and Ollama report lifecycle activity only and never invent token or cost values.
-
-## Uninstall
-
-If you configured the machine connector, disconnect first so Tokly removes its collector service
-and owned tool configuration. Then uninstall the global package:
-
-```bash
-tokly disconnect
-npm uninstall -g tokly-sdk
-```
-
-If you installed only the server SDK in a project, remove that dependency with:
-
-```bash
-npm uninstall tokly-sdk
 ```
 
 ## Usage
@@ -95,6 +68,21 @@ tokly.capture(fromOllamaResponse({
 ```
 
 OpenRouter cost is taken from its response. Ollama events intentionally omit `costUsd`; Tokly records local token usage and latency without inventing a compute price.
+
+## Optional machine connector
+
+The SDK does not modify or monitor a developer workstation. To connect supported local AI tools, install the separate `tokly-cli` package:
+
+```bash
+npm install -g tokly-cli
+tokly init
+```
+
+## Uninstall
+
+```bash
+npm uninstall tokly-sdk
+```
 
 ## License
 

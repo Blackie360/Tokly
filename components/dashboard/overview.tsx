@@ -69,13 +69,13 @@ export function DashboardOverview({
         <PageHeader eyebrow="Overview" title="Usage overview" description="See AI requests, tokens, and cost after you connect your first app." />
         <FirstUseCard
           title="Send your first usage event"
-          description="Your workspace is ready. Connect the app you just created, then this page will fill with real usage data."
+          description="Your workspace is ready. Instrument the app you just created with the Tokly SDK, then this page will fill with real usage data."
           href={projectsHref}
           action="Continue setup"
           steps={[
-            { title: "Copy the app key", description: "Use the write key created during setup." },
-            { title: "Send one test event", description: "Run the ready-to-copy command on the Apps page." },
-            { title: "Come back here", description: "Your first request and cost will appear in the overview." },
+            { title: "Save the app key", description: "Keep the write key in TOKLY_API_KEY on your server." },
+            { title: "Install the SDK", description: "Add tokly-sdk where your provider response is available." },
+            { title: "Capture usage", description: "Your first instrumented request and cost will appear here." },
           ]}
         />
       </>
