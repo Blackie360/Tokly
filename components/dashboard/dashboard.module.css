@@ -131,7 +131,7 @@
 
 .twoColumn { display: grid; gap: 1.25rem; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.45fr); }
 .codeBlock { background: #0d1210; border: 1px solid var(--line-strong); color: #eaf0eb; font-family: var(--font-mono); font-size: var(--text-xs); overflow-x: auto; padding: 1rem; white-space: pre; }
-.keyReveal { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); border: 1px solid var(--accent); margin-bottom: 1.25rem; padding: 1rem; }
+.keyReveal { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); border: 1px solid var(--accent); isolation: isolate; margin-bottom: 1.25rem; overflow: hidden; padding: 1rem; position: relative; }
 .keyReveal strong { display: block; margin-bottom: 0.5rem; }
 .keyReveal > p { margin: 0 0 0.8rem; }
 .keyReveal > p:last-child { margin: 0.8rem 0 0; }
@@ -144,6 +144,37 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   margin: 0.65rem 0 0;
+}
+.confettiBurst {
+  height: 1px;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 72%;
+  width: 1px;
+  z-index: 2;
+}
+.confettiPiece {
+  animation: key-copy-confetti 820ms var(--ease-out) both;
+  animation-delay: var(--confetti-delay);
+  background: var(--accent);
+  height: 9px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 5px;
+}
+.confettiPiece:nth-child(3n) { background: var(--teal); }
+.confettiPiece:nth-child(4n) { height: 5px; width: 8px; }
+
+@keyframes key-copy-confetti {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.5); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--confetti-x), var(--confetti-y)) rotate(var(--confetti-rotation)) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confettiBurst { display: none; }
 }
 
 @media (max-width: 1100px) {

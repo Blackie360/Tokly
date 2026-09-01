@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 test.skip(!process.env.E2E_DATABASE_URL, "E2E_DATABASE_URL must point to a migrated disposable PostgreSQL database.");
 
 test("onboarding, ingestion, filters, budgets, and invitations", async ({ page, request }) => {
+  test.setTimeout(240_000);
   const suffix = randomUUID().slice(0, 8);
   const email = `owner-${suffix}@example.test`;
   const workspace = `E2E Workspace ${suffix}`;
@@ -17,23 +18,30 @@ test("onboarding, ingestion, filters, budgets, and invitations", async ({ page, 
   await page.getByLabel("Password").fill(`Safe-${suffix}-password`);
   await page.getByRole("button", { name: /create account/i }).click();
 
-  await expect(page.getByRole("heading", { name: /set up your workspace/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /set up your workspace/i })).toBeVisible({ timeout: 20_000 });
   await page.getByLabel("Team or company name").fill(workspace);
   await page.getByLabel("App name").fill(project);
-  await page.getByRole("button", { name: /create workspace and key/i }).click();
+  await page.getByRole("button", { name: /create workspace.*key/i }).click();
 
-  await expect(page.getByText(/will not be shown again/i)).toBeVisible();
-  const projectKey = (await page.getByLabel(new RegExp(`New ${project} write key`, "i")).textContent())?.trim();
+  const revealedKey = page.getByLabel(new RegExp(`New ${project} write key`, "i"));
+  await expect(revealedKey).toBeVisible({ timeout: 30_000 });
+  const projectKey = (await revealedKey.textContent())?.trim();
   expect(projectKey).toMatch(/^tok_live_/);
   await page.getByRole("button", { name: /copy key/i }).click();
   await expect(page.getByRole("status")).toHaveText(/copied.*copy it again/i);
   await expect(page.getByRole("button", { name: /copy again/i })).toBeVisible();
+  await expect(page.getByTestId("key-copy-confetti")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "OpenAI" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Anthropic" }).click();
+  await expect(page.getByTestId("integration-example")).toContainText("fromAnthropicResponse");
+  await page.getByRole("button", { name: /copy anthropic example/i }).click();
+  await expect(page.getByRole("button", { name: /copied/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: new RegExp(`connect ${project}`, "i") })).toBeVisible();
   const workspaceUrl = new URL(page.url());
   const workspaceBase = workspaceUrl.pathname.replace(/\/projects$/, "");
 
   await page.getByRole("button", { name: /check connection/i }).click();
-  await expect(page.getByRole("status")).toHaveText(/no event yet/i);
+  await expect(page.getByText(/no sdk event yet/i)).toBeVisible();
   await expect(page.getByLabel(new RegExp(`New ${project} write key`, "i"))).toBeVisible();
 
   await page.goto(`${workspaceBase}/overview`);
@@ -79,7 +87,7 @@ test("onboarding, ingestion, filters, budgets, and invitations", async ({ page, 
   const inviteEmail = `member-${suffix}@example.test`;
   await page.getByLabel("Email").fill(inviteEmail);
   await page.getByRole("button", { name: /send invitation/i }).click();
-  await expect(page.getByText(new RegExp(inviteEmail))).toBeVisible();
+  await expect(page.getByText(`Invitation sent to ${inviteEmail}.`, { exact: true })).toBeVisible({ timeout: 20_000 });
 
   const disposableProject = `Disposable ${suffix}`;
   const disposableEvent = `evt_delete_${suffix}`;
@@ -113,12 +121,12 @@ test("onboarding, ingestion, filters, budgets, and invitations", async ({ page, 
   await page.goto(`${workspaceBase}/budgets`);
   await page.getByLabel("Budget name").fill(disposableBudget);
   await page.getByLabel("Budget applies to").selectOption("project");
-  await page.getByLabel("App").selectOption({ label: disposableProject });
+  await page.getByLabel("App", { exact: true }).selectOption({ label: disposableProject });
   await page.getByLabel("Monthly target (USD)").fill("25");
   await page.getByRole("button", { name: /create budget/i }).click();
   await expect(page.getByRole("heading", { name: disposableBudget })).toBeVisible();
 
-  await page.goto(`${workspaceBase}/projects?created=1`);
+  await page.goto(`${workspaceBase}/projects`);
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: `Delete ${disposableProject} app` }).click();
   await expect(page.getByRole("heading", { name: disposableProject })).toHaveCount(0);

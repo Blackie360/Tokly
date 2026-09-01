@@ -141,6 +141,10 @@
   margin-bottom: 0;
 }
 
+.installCopy {
+  margin: 0.75rem 0 1rem;
+}
+
 .createForm,
 .keyForm {
   align-items: end;

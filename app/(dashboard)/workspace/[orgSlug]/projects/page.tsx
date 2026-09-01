@@ -6,6 +6,7 @@ import { createProjectAction, createProjectKeyAction, deleteProjectAction, revok
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/dashboard/overview";
+import { IntegrationExamples } from "@/components/integration-examples";
 import { OneTimeKeyReveal } from "@/components/one-time-key-reveal";
 import { SubmitButton } from "@/components/submit-button";
 import styles from "@/components/dashboard/dashboard.module.css";
@@ -99,23 +100,6 @@ export default async function ProjectsPage({
   -H "Content-Type: application/json" \\
   -d '{"events":[{"id":"evt_001","timestamp":"${new Date().toISOString()}","provider":"openai","model":"gpt-5.5","operation":"generation","usage":{"inputTokens":1200,"outputTokens":240},"dimensions":{"environment":"production","feature":"assistant"}}]}'`;
   const sdkInstall = "npm install tokly-sdk";
-  const sdkExample = `import { createTokly } from "tokly-sdk";
-import { fromOpenAIResponse } from "tokly-sdk/adapters";
-
-const tokly = createTokly({
-  apiKey: process.env.TOKLY_API_KEY!,
-});
-
-tokly.capture(fromOpenAIResponse({
-  model: response.model,
-  usage: response.usage,
-  dimensions: {
-    environment: "production",
-    feature: "assistant",
-  },
-}));
-
-await tokly.shutdown();`;
 
   return (
     <>
@@ -141,10 +125,9 @@ await tokly.shutdown();`;
           <article className={projectStyles.setupStep}>
             <span className={projectStyles.stepNumber}>3</span>
             <div>
-              <h3>Capture the provider response</h3>
-              <p>Keep the key in <span className="mono">TOKLY_API_KEY</span> on your server, then attach usage where the response is available.</p>
-              <pre className={styles.codeBlock}><code>{sdkExample}</code></pre>
-              <CopyButton value={sdkExample} label="Copy SDK example" />
+              <h3>Choose your provider</h3>
+              <p>Keep the key in <span className="mono">TOKLY_API_KEY</span> on your server, then capture usage where the provider response is available.</p>
+              <IntegrationExamples />
             </div>
           </article>
           <article className={projectStyles.setupStep}>
@@ -304,20 +287,39 @@ await tokly.shutdown();`;
         )}
       </section>
 
-      {!oneTimeKey ? <details className={`${styles.panel} ${styles.section} ${projectStyles.guide}`} open={!hasUsedKey}>
-        <summary>
-          <span className={projectStyles.summaryCopy}>
-            <strong>Send a test event</strong>
-            <small>View a ready-to-run cURL example</small>
-          </span>
-          <span className={projectStyles.summaryIcon} aria-hidden="true">+</span>
-        </summary>
-        <div className={projectStyles.disclosureBody}>
-          {!hasUsedKey ? <p><strong>Still setting up?</strong> If you did not save the original key, create another one under your app before running this command.</p> : null}
-          <pre className={styles.codeBlock}><code>{curl}</code></pre>
-          <p className="muted">Replace <span className="mono">YOUR_APP_KEY</span> with a live or test key before running the command.</p>
-        </div>
-      </details> : null}
+      {!oneTimeKey ? (
+        <>
+          <details className={`${styles.panel} ${styles.section} ${projectStyles.guide}`} open={!hasUsedKey}>
+            <summary>
+              <span className={projectStyles.summaryCopy}>
+                <strong>SDK integration examples</strong>
+                <small>Copy setup code for your AI provider</small>
+              </span>
+              <span className={projectStyles.summaryIcon} aria-hidden="true">+</span>
+            </summary>
+            <div className={projectStyles.disclosureBody}>
+              <p>Install the server-only package, then choose the provider whose response you want to meter.</p>
+              <pre className={styles.codeBlock}><code>{sdkInstall}</code></pre>
+              <div className={projectStyles.installCopy}><CopyButton value={sdkInstall} label="Copy install command" /></div>
+              <IntegrationExamples />
+            </div>
+          </details>
+          <details className={`${styles.panel} ${styles.section} ${projectStyles.guide}`} open={!hasUsedKey}>
+            <summary>
+              <span className={projectStyles.summaryCopy}>
+                <strong>Send a test event</strong>
+                <small>View a ready-to-run cURL example</small>
+              </span>
+              <span className={projectStyles.summaryIcon} aria-hidden="true">+</span>
+            </summary>
+            <div className={projectStyles.disclosureBody}>
+              {!hasUsedKey ? <p><strong>Still setting up?</strong> If you did not save the original key, create another one under your app before running this command.</p> : null}
+              <pre className={styles.codeBlock}><code>{curl}</code></pre>
+              <p className="muted">Replace <span className="mono">YOUR_APP_KEY</span> with a live or test key before running the command.</p>
+            </div>
+          </details>
+        </>
+      ) : null}
     </>
   );
 }
