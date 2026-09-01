@@ -36,6 +36,7 @@
     "recharts": "latest",
     "resend": "latest",
     "server-only": "latest",
+    "shiki": "^4.4.3",
     "zod": "latest"
   },
   "devDependencies": {

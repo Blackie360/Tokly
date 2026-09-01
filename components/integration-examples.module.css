@@ -64,15 +64,23 @@
 }
 
 .codeBlock {
-  background: #0d1210;
-  color: #eaf0eb;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  margin: 0;
+  background: #1e1e1e;
   max-height: 31rem;
   overflow: auto;
+}
+
+.codeBlock :global(.shiki) {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.65;
+  margin: 0;
+  min-width: max-content;
   padding: 1rem;
-  white-space: pre;
+}
+
+.codeBlock :global(.line) {
+  display: block;
+  min-height: 1em;
 }
 
 .note {
