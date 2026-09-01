@@ -201,21 +201,33 @@
   margin: 0;
 }
 
+.commandShell {
+  margin-top: 1.25rem;
+  max-width: 100%;
+  position: relative;
+}
+
 .command {
   background: var(--ink);
   border: 1px solid var(--ink);
   color: var(--surface);
   font-family: var(--font-mono);
   font-size: clamp(0.72rem, 1.1vw, 0.82rem);
-  margin: 1.25rem 0 0;
+  margin: 0;
   max-width: 100%;
   overflow-x: auto;
-  padding: 0.85rem 1rem;
+  padding: 3.4rem 1rem 0.85rem;
   white-space: pre-wrap;
 }
 
 .command code { overflow-wrap: anywhere; }
 .command span { color: var(--accent); }
+
+.commandCopy {
+  position: absolute;
+  right: 0.55rem;
+  top: 0.55rem;
+}
 
 .toolStrip {
   border: 1px solid var(--line-strong);
@@ -231,6 +243,34 @@
 .toolStrip span { padding: 1rem 0.75rem; }
 .toolStrip span + span { border-left: 1px solid var(--line); }
 .toolStrip span:first-child { background: var(--accent); color: var(--ink); }
+
+.examplesSection {
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.examplesIntro {
+  align-items: end;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+  margin-bottom: 1.5rem;
+}
+
+.examplesIntro h3 {
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin: 0.5rem 0 0;
+}
+
+.examplesIntro p {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin: 0;
+  max-width: 64ch;
+}
 
 .connectorNote {
   align-items: center;
@@ -295,6 +335,7 @@
   .toolStrip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .toolStrip span:nth-child(5) { border-left: 0; }
   .toolStrip span:nth-child(n + 5) { border-top: 1px solid var(--line); }
+  .examplesIntro { align-items: start; grid-template-columns: 1fr; }
   .connectorNote { align-items: start; grid-template-columns: 1fr; }
 }
 

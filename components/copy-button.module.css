@@ -1,0 +1,23 @@
+.icon {
+  flex: 0 0 auto;
+  height: 1.05rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+  width: 1.05rem;
+}
+
+.compact {
+  background: var(--surface) !important;
+  border-color: color-mix(in srgb, var(--surface) 72%, transparent) !important;
+  color: var(--ink) !important;
+  min-height: 36px;
+  padding: 0.45rem 0.65rem;
+}
+
+.compact:hover {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent-ink) !important;
+}

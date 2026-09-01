@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
+import { IntegrationExamples } from "@/components/integration-examples";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import styles from "./page.module.css";
@@ -123,11 +125,20 @@ export default function HomePage() {
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
                   {step.code ? (
-                    <pre className={styles.command} aria-label={`${step.codeKind === "terminal" ? "Terminal command" : "TypeScript example"}: ${step.code}`}>
-                      <code>
-                        {step.codeKind === "terminal" ? <span aria-hidden="true">$</span> : null}{step.codeKind === "terminal" ? " " : null}{step.code}
-                      </code>
-                    </pre>
+                    <div className={styles.commandShell}>
+                      <pre className={styles.command} aria-label={`${step.codeKind === "terminal" ? "Terminal command" : "TypeScript example"}: ${step.code}`}>
+                        <code>
+                          {step.codeKind === "terminal" ? <span aria-hidden="true">$</span> : null}{step.codeKind === "terminal" ? " " : null}{step.code}
+                        </code>
+                      </pre>
+                      <div className={styles.commandCopy}>
+                        <CopyButton
+                          compact
+                          label={step.codeKind === "terminal" ? "Copy install command" : "Copy TypeScript example"}
+                          value={step.code}
+                        />
+                      </div>
+                    </div>
                   ) : null}
                 </div>
               </li>
@@ -143,6 +154,17 @@ export default function HomePage() {
             <span>OpenRouter</span>
             <span>Ollama</span>
           </div>
+
+          <section className={styles.examplesSection} aria-labelledby="provider-examples-heading">
+            <div className={styles.examplesIntro}>
+              <div>
+                <span className="coordinate">Ready-to-use code</span>
+                <h3 id="provider-examples-heading">Choose your provider example.</h3>
+              </div>
+              <p>Copy the complete server-side example, add your app key as an environment variable, and capture the usage returned by your provider.</p>
+            </div>
+            <IntegrationExamples />
+          </section>
 
           <aside className={styles.connectorNote} aria-label="Optional developer machine connector">
             <div>

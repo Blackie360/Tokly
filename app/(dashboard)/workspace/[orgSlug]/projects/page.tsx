@@ -289,7 +289,7 @@ export default async function ProjectsPage({
 
       {!oneTimeKey ? (
         <>
-          <details className={`${styles.panel} ${styles.section} ${projectStyles.guide}`} open={!hasUsedKey}>
+          <details className={`${styles.panel} ${styles.section} ${projectStyles.guide}`} open>
             <summary>
               <span className={projectStyles.summaryCopy}>
                 <strong>SDK integration examples</strong>
@@ -315,6 +315,7 @@ export default async function ProjectsPage({
             <div className={projectStyles.disclosureBody}>
               {!hasUsedKey ? <p><strong>Still setting up?</strong> If you did not save the original key, create another one under your app before running this command.</p> : null}
               <pre className={styles.codeBlock}><code>{curl}</code></pre>
+              <div className={projectStyles.installCopy}><CopyButton value={curl} label="Copy cURL command" /></div>
               <p className="muted">Replace <span className="mono">YOUR_APP_KEY</span> with a live or test key before running the command.</p>
             </div>
           </details>
