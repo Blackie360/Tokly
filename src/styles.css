@@ -1549,3 +1549,7 @@ select {
 .resume-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 0 18px 16px; }
 .resume-actions .icon-button { margin-left: auto; }
 .resume-actions [aria-pressed="true"] { color: var(--lilac); background: #343049; }
+
+.history-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+.history-controls p { flex-basis: 100%; margin: 0; }
+.history-explanation { padding: 16px; border: 1px solid #454e69; border-radius: 10px; color: #ccd3e7; }

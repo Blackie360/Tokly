@@ -4,9 +4,9 @@ export const native = isTauri();
 const key = "tokly-preview-v1";
 function read(): Snapshot {
   try {
-    return (
-      JSON.parse(localStorage.getItem(key) || "null") || structuredClone(empty)
-    );
+    const saved = JSON.parse(localStorage.getItem(key) || "null");
+    if (!saved) return structuredClone(empty);
+    return {...empty, ...saved, projects: saved.projects.map((p: Snapshot["projects"][number]) => ({...p, lastCommit: p.lastCommit ?? null}))};
   } catch {
     return structuredClone(empty);
   }
@@ -41,6 +41,10 @@ export async function call<T = void>(
       break;
     case "pin_project":
       s.projects = s.projects.map((p) => p.id === args.id ? {...p, pinned: Boolean(args.pinned)} : p);
+      break;
+    case "set_history_days":
+      if (![7,30,90].includes(Number(args.days))) throw new Error("Choose 7, 30 or 90 days.");
+      s.historyDays = Number(args.days);
       break;
     case "set_retention":
       s.retentionDays = Number(args.days);
@@ -100,6 +104,7 @@ export function sample() {
     excluded: false,
     available: true,
     pinned: false,
+    lastCommit: time - 3600,
   }));
   const labels = [
     "ml/terms.csv",
@@ -125,6 +130,7 @@ export function sample() {
     ][i % 4],
     timestamp: time - 3600 - i * 32000,
   }));
+  commits.push({projectId: projects[3].id, sha: "b".repeat(40), label: "Earlier desktop exploration", timestamp: time - 20 * 86400});
   write({
     ...empty,
     roots: ["/Users/you/Projects"],

@@ -8,6 +8,7 @@ export interface Project {
   excluded: boolean;
   available: boolean;
   pinned: boolean;
+  lastCommit: number | null;
 }
 export interface Activity {
   id: number;
@@ -28,6 +29,7 @@ export interface Snapshot {
   activity: Activity[];
   commits: Commit[];
   retentionDays: number;
+  historyDays: number;
   lastScan: number | null;
   warnings: string[];
 }
@@ -37,6 +39,7 @@ export const empty: Snapshot = {
   activity: [],
   commits: [],
   retentionDays: 90,
+  historyDays: 7,
   lastScan: null,
   warnings: [],
 };
@@ -65,4 +68,13 @@ export function inPeriod(timestamp: number, days: Date[]) {
   const end = new Date(days[6]);
   end.setDate(end.getDate() + 1);
   return timestamp >= start && timestamp < end.getTime() / 1000;
+}
+
+export function historyExplanation(project: Project, historyDays: number, retentionDays: number, time = Date.now() / 1000): string {
+  if (!project.available) return "Folder unavailable. Reconnect it to refresh Git history.";
+  if (!project.lastCommit) return "No commits found on the current branch yet.";
+  const date = new Date(project.lastCommit * 1000).toLocaleDateString();
+  const effective = Math.min(historyDays, retentionDays);
+  if (project.lastCommit < time - effective * 86400) return `Repository connected. Branch tip committed on ${date}, outside the ${effective}-day history window.`;
+  return `Repository connected. Branch tip committed on ${date}. History scans up to 10,000 commits; refresh to check for updates.`;
 }

@@ -102,3 +102,26 @@ test("continue cards show context and pins survive relaunch", async ({ page }) =
   await page.reload();
   await expect(page.getByRole("button", {name: "Pin Piko Pi Agent", exact: true})).toBeVisible();
 });
+
+test("history selection reveals older commits and persists", async ({page}) => {
+  await page.getByRole("button", {name: /Projects 4/}).click();
+  await page.getByRole("button", {name: "Tokly", exact: true}).click();
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    state.projects.find((p: {name:string}) => p.name === "Tokly").lastCommit = Date.now()/1000 - 20*86400;
+    state.commits = state.commits.filter((c: {projectId:string,timestamp:number}) => !c.projectId.endsWith("/tokly") || c.timestamp < Date.now()/1000 - 7*86400);
+    localStorage.setItem("tokly-preview-v1", JSON.stringify(state));
+  });
+  await page.getByRole("button", {name: "Refresh Git status"}).click();
+  await expect(page.getByText(/outside the 7-day history window/)).toBeVisible();
+  await page.getByLabel("Git history", {exact:true}).selectOption("30");
+  await expect(page.getByText("Earlier desktop exploration")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", {name: /Projects 4/}).click();
+  await expect(page.getByLabel("Git history", {exact:true})).toHaveValue("30");
+  await page.getByRole("button", {name: "Settings", exact:true}).click();
+  page.on("dialog", dialog => dialog.accept());
+  await page.getByLabel("Keep activity for").selectOption("7");
+  await page.getByRole("button", {name: /Projects 4/}).click();
+  await expect(page.getByText(/7-day retention limits this history/)).toBeVisible();
+});

@@ -32,6 +32,7 @@ pub struct Project {
     pub excluded: bool,
     pub available: bool,
     pub pinned: bool,
+    pub last_commit: Option<i64>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +59,7 @@ pub struct Snapshot {
     pub activity: Vec<Activity>,
     pub commits: Vec<Commit>,
     pub retention_days: i64,
+    pub history_days: i64,
     pub last_scan: Option<i64>,
     pub warnings: Vec<String>,
 }
@@ -75,7 +77,7 @@ impl Store {
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
   CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-  INSERT OR IGNORE INTO settings VALUES('retention','90');
+  INSERT OR IGNORE INTO settings VALUES('retention','90'),('history','7');
   DELETE FROM settings WHERE key='paused';
   CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,name TEXT NOT NULL,branch TEXT NOT NULL DEFAULT '',changed TEXT NOT NULL DEFAULT '[]',note TEXT NOT NULL DEFAULT '',last_activity INTEGER,excluded INTEGER NOT NULL DEFAULT 0,available INTEGER NOT NULL DEFAULT 1);
   CREATE TABLE IF NOT EXISTS activity(id INTEGER PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,kind TEXT NOT NULL,label TEXT NOT NULL,timestamp INTEGER NOT NULL);
@@ -95,6 +97,11 @@ impl Store {
                 [],
             )
             .map_err(err)?;
+        }
+        let has_last_commit: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('projects') WHERE name='last_commit')", [], |r| r.get(0)).map_err(err)?;
+        if !has_last_commit {
+            db.execute("ALTER TABLE projects ADD COLUMN last_commit INTEGER", [])
+                .map_err(err)?;
         }
         Ok(Self {
             db,
@@ -144,6 +151,27 @@ impl Store {
             }
         }
         Ok(())
+    }
+    pub fn history_days(&self) -> i64 {
+        self.db
+            .query_row("SELECT value FROM settings WHERE key='history'", [], |r| {
+                r.get::<_, String>(0)
+            })
+            .unwrap_or_else(|_| "7".into())
+            .parse()
+            .unwrap_or(7)
+    }
+    pub fn set_history_days(&mut self, days: i64) -> Result<()> {
+        if ![7, 30, 90].contains(&days) {
+            return Err("Choose 7, 30 or 90 days.".into());
+        }
+        self.db
+            .execute(
+                "UPDATE settings SET value=? WHERE key='history'",
+                [days.to_string()],
+            )
+            .map_err(err)?;
+        self.reconcile()
     }
     pub fn retention(&self) -> i64 {
         self.db
@@ -227,7 +255,7 @@ impl Store {
             .map_err(err)
     }
     pub fn snapshot(&self) -> Result<Snapshot> {
-        let mut q=self.db.prepare("SELECT id,name,branch,changed,note,last_activity,excluded,available,pinned FROM projects ORDER BY pinned DESC,last_activity DESC,name").map_err(err)?;
+        let mut q=self.db.prepare("SELECT id,name,branch,changed,note,last_activity,excluded,available,pinned,last_commit FROM projects ORDER BY pinned DESC,last_activity DESC,name").map_err(err)?;
         let projects = q
             .query_map([], |r| {
                 let changed: String = r.get(3)?;
@@ -241,6 +269,7 @@ impl Store {
                     excluded: r.get(6)?,
                     available: r.get(7)?,
                     pinned: r.get(8)?,
+                    last_commit: r.get(9)?,
                 })
             })
             .map_err(err)?
@@ -262,14 +291,17 @@ impl Store {
             .map_err(err)?;
         let mut q=self.db.prepare("SELECT project_id,sha,label,timestamp FROM commits WHERE timestamp>=? ORDER BY timestamp DESC").map_err(err)?;
         let commits = q
-            .query_map([now() - self.retention() * 86400], |r| {
-                Ok(Commit {
-                    project_id: r.get(0)?,
-                    sha: r.get(1)?,
-                    label: r.get(2)?,
-                    timestamp: r.get(3)?,
-                })
-            })
+            .query_map(
+                [now() - self.retention().min(self.history_days()) * 86400],
+                |r| {
+                    Ok(Commit {
+                        project_id: r.get(0)?,
+                        sha: r.get(1)?,
+                        label: r.get(2)?,
+                        timestamp: r.get(3)?,
+                    })
+                },
+            )
             .map_err(err)?
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(err)?;
@@ -279,6 +311,7 @@ impl Store {
             activity,
             commits,
             retention_days: self.retention(),
+            history_days: self.history_days(),
             last_scan: self.last_scan,
             warnings: self.warnings.clone(),
         })
@@ -388,19 +421,27 @@ impl Store {
         };
         self.db
             .execute(
-                "UPDATE projects SET branch=?,changed=?,available=1 WHERE id=?",
-                params![branch, serde_json_compat::encode(&changed), id],
+                "UPDATE projects SET branch=?,changed=?,last_commit=?,available=1 WHERE id=?",
+                params![
+                    branch,
+                    serde_json_compat::encode(&changed),
+                    repo.head()
+                        .ok()
+                        .and_then(|h| h.peel_to_commit().ok())
+                        .map(|c| c.time().seconds()),
+                    id
+                ],
             )
             .map_err(err)?;
         let mut walk = repo.revwalk().map_err(err)?;
         if walk.push_head().is_ok() {
             walk.set_sorting(git2::Sort::TIME).map_err(err)?;
-            let cutoff = now() - 7 * 86400;
+            let cutoff = now() - self.history_days().min(self.retention()) * 86400;
             for oid in walk.take(10000).flatten() {
                 if let Ok(c) = repo.find_commit(oid) {
                     let t = c.time().seconds();
                     if t < cutoff {
-                        break;
+                        continue;
                     }
                     self.db.execute("INSERT OR IGNORE INTO commits(project_id,sha,label,timestamp) VALUES(?,?,?,?)",params![id,oid.to_string(),c.summary().unwrap_or("Commit"),t]).map_err(err)?;
                 }
@@ -632,6 +673,58 @@ mod tests {
         assert_eq!(snap.projects[0].last_activity, None);
     }
     #[test]
+    fn history_window_imports_old_commits_and_respects_retention() {
+        let (temp, mut s, p) = fixture();
+        let repo = Repository::open(&p).unwrap();
+        let tree_id = repo.index().unwrap().write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let old = git2::Signature::new(
+            "Test",
+            "test@example.com",
+            &git2::Time::new(now() - 60 * 86400, 0),
+        )
+        .unwrap();
+        let parent_id = repo
+            .commit(Some("HEAD"), &old, &old, "Older work", &tree, &[])
+            .unwrap();
+        let parent = repo.find_commit(parent_id).unwrap();
+        let recent = git2::Signature::new(
+            "Test",
+            "test@example.com",
+            &git2::Time::new(now() - 20 * 86400, 0),
+        )
+        .unwrap();
+        repo.commit(
+            Some("HEAD"),
+            &recent,
+            &recent,
+            "Recent work",
+            &tree,
+            &[&parent],
+        )
+        .unwrap();
+        s.add_root(temp.path()).unwrap();
+        s.reconcile().unwrap();
+        assert!(s.snapshot().unwrap().commits.is_empty());
+        assert!(s.snapshot().unwrap().projects[0].last_commit.is_some());
+        s.set_history_days(30).unwrap();
+        assert_eq!(s.snapshot().unwrap().commits.len(), 1);
+        s.set_history_days(90).unwrap();
+        assert_eq!(s.snapshot().unwrap().commits.len(), 2);
+        s.set_history_days(7).unwrap();
+        assert!(s.snapshot().unwrap().commits.is_empty());
+        s.set_history_days(90).unwrap();
+        s.set_retention(7).unwrap();
+        s.reconcile().unwrap();
+        assert!(s.snapshot().unwrap().commits.is_empty());
+        assert_eq!(
+            s.db.query_row("SELECT COUNT(*) FROM commits", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+        assert!(s.set_history_days(14).is_err());
+    }
+    #[test]
     fn tracks_changes_and_notes_without_file_contents() {
         let (t, mut s, p) = fixture();
         s.add_root(t.path()).unwrap();
@@ -788,6 +881,7 @@ mod tests {
             .unwrap();
         persisted.set_retention(30).unwrap();
         persisted.pin_project(p.to_str().unwrap(), true).unwrap();
+        persisted.set_history_days(30).unwrap();
         drop(persisted);
         let mut reopened = Store::open(&db).unwrap();
         reopened.reconcile().unwrap();
@@ -811,6 +905,7 @@ mod tests {
             0
         );
         assert_eq!(restored.retention_days, 30);
+        assert_eq!(restored.history_days, 30);
         assert!(restored.projects[0].pinned);
         assert_eq!(restored.projects[0].note, "Pick up here");
         assert_eq!(restored.roots.len(), 1);
