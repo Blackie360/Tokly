@@ -9,11 +9,17 @@ pub struct StickyNote {
     pub text: String,
     pub color: usize,
     pub position: usize,
+    #[serde(default)]
+    pub context: Option<crate::context::Context>,
 }
 impl Store {
     pub fn project_notes(&self, project: &str) -> Result<Vec<StickyNote>> {
-        self.db.prepare("SELECT id,text,color,position FROM project_notes WHERE project_id=? ORDER BY position").map_err(err)?
-            .query_map([project],|r|Ok(StickyNote{id:r.get(0)?,text:r.get(1)?,color:r.get(2)?,position:r.get(3)?})).map_err(err)?.collect::<std::result::Result<Vec<_>,_>>().map_err(err)
+        let mut notes=self.db.prepare("SELECT id,text,color,position FROM project_notes WHERE project_id=? ORDER BY position").map_err(err)?
+            .query_map([project],|r|Ok(StickyNote{id:r.get(0)?,text:r.get(1)?,color:r.get(2)?,position:r.get(3)?,context:None})).map_err(err)?.collect::<std::result::Result<Vec<_>,_>>().map_err(err)?;
+        for note in &mut notes {
+            note.context = self.read_context("note_context", "note_id", &note.id)?;
+        }
+        Ok(notes)
     }
     pub fn add_note(&mut self, project: &str) -> Result<String> {
         let count = self.project_notes(project)?.len();
@@ -54,6 +60,7 @@ impl Store {
         if text.chars().count() > 2000 {
             return Err("Keep notes under 2,000 characters.".into());
         }
+        let context = self.current_context(project)?;
         let tx = self.db.transaction().map_err(err)?;
         if tx
             .execute(
@@ -64,6 +71,16 @@ impl Store {
             == 0
         {
             return Err("Note not found in this project.".into());
+        }
+        if let Some(context) = context {
+            tx.execute(
+                "INSERT OR REPLACE INTO note_context VALUES(?,?)",
+                params![note_id, serde_json::to_string(&context).map_err(err)?],
+            )
+            .map_err(err)?;
+        } else {
+            tx.execute("DELETE FROM note_context WHERE note_id=?", [note_id])
+                .map_err(err)?;
         }
         if note_id == format!("legacy:{project}") {
             tx.execute(

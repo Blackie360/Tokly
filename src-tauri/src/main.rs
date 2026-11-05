@@ -96,6 +96,8 @@ async fn export_notes(drafts: Vec<tokly_tracker::notes::Draft>, s: State<'_, Sha
     }).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
+async fn mark_visit(id:String,s:State<'_,Shared>)->Result<(),String>{with_store(s.inner().clone(),move |s|s.mark_visit(&id)).await}
+#[tauri::command]
 async fn save_note(id: String, note: String, note_id: Option<String>, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| match note_id {Some(note_id)=>s.save_sticky_note(&id,&note_id,&note),None=>s.save_note(&id,&note)}).await
 }
@@ -240,6 +242,7 @@ fn main() {
             add_root,
             remove_root,
             save_note,
+            mark_visit,
             add_note,
             select_note,
             export_notes,

@@ -56,12 +56,19 @@ export async function call<T = void>(
       const blob=new Blob([JSON.stringify({format:"Tokly note backup",version:2,exportedAt:Math.floor(Date.now()/1000),notes:[...notes,...orphaned]},null,2)],{type:"application/json"});
       const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download="Tokly-notes.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return true as T;
     }
+    case "mark_visit": {
+      const project=s.projects.find(p=>p.id===args.id);
+      if(!project)throw new Error("Project not found");
+      const context=project.currentContext || {branch:project.branch,headSha:s.gitHistory.find(h=>h.projectId===project.id)?.headSha||null,changedFiles:[...project.changedFiles],observedAt:Math.floor(Date.now()/1000)};
+      project.lastVisitContext=structuredClone(context);project.lastVisitAt=Math.floor(Date.now()/1000);break;
+    }
     case "save_note": {
       const project=s.projects.find(p=>p.id===args.id);
       const noteId=String(args.noteId || `legacy:${args.id}`);
       const note=project && projectNotes(project).find(n=>n.id===noteId);
       if(!project || !note)throw new Error("Note not found in this project.");
       note.text=String(args.note);
+      note.context=project.currentContext || {branch:project.branch,headSha:s.gitHistory.find(h=>h.projectId===project.id)?.headSha||null,changedFiles:[...project.changedFiles],observedAt:Math.floor(Date.now()/1000)};
       if(project.activeNoteId===noteId)project.note=note.text;
       break;
     }

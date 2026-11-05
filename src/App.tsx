@@ -1,3 +1,4 @@
+import { ContextEvidence } from "./ContextEvidence";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity as ActivityIcon,
@@ -449,7 +450,11 @@ export default function App() {
                             <ChevronRight className="row-arrow" size={17} />
                           </button>
                           <p className="resume-note">{(drafts.drafts[noteDraftKey(p.id,activeNote(p).id)]?.text ?? p.note) || "No next step yet. Leave yourself a starting point."}</p>
+                          <p className="context-caption">Last recorded: {data.activity.find(a=>a.projectId===p.id)?.label || 'No file activity recorded'} · {p.branch}{p.currentContext?.headSha ? ` · ${p.currentContext.headSha.slice(0,7)}` : ''}</p>
+                          <ContextEvidence previous={activeNote(p).context} current={p.currentContext} label="since this note was saved" />
+                          <ContextEvidence previous={p.lastVisitContext} current={p.currentContext} label="since your last Resume" />
                           <div className="resume-actions">
+                            <button className="text-button" disabled={busy || !p.available} onClick={async()=>{await action("mark_visit",{id:p.id});setSelected(p.id);navigate("Projects");setTab("Notes");}}>Resume project</button>
                             <EditorActions editors={editors} disabled={busy || !p.available} onOpen={editorId => void action("open_project", {id: p.id, editor: true, editorId})} />
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
                             <button className="icon-button" aria-label={`${p.pinned ? "Unpin" : "Pin"} ${p.name}`} aria-pressed={Boolean(p.pinned)} disabled={busy} onClick={() => void action("pin_project", {id: p.id, pinned: !p.pinned})}><Pin size={16}/></button>
@@ -661,6 +666,7 @@ export default function App() {
                             </>
                           ) : (
                             <div className="notes-workbench">
+                              <ContextEvidence previous={selectedNote?.context} current={current.currentContext} label="since this note was saved" />
                               <NoteStackPicker project={current} busy={busy} onSelect={noteId=>void action("select_note",{id:current.id,noteId})}/>
                               <button className="button secondary" disabled={busy || projectNotes(current).length>=12} onClick={()=>void action("add_note",{id:current.id},"New note added")}>Add sticky note</button>
                               <p className="small">Each project has its own stack, with up to 12 distinct-color notes. Select a note to bring it forward. Edits autosave.</p>
