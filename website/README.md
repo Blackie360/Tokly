@@ -1,32 +1,38 @@
 # Tokly website
 
-Static marketing and download website for the local-first Tokly desktop app. All website source and deployment files live in this directory; the desktop app at the repository root is unchanged.
+Static marketing and preview website for the local-first Tokly desktop app. All website source and deployment files live here; the desktop application at the repository root is unchanged.
 
 ## Validate
 
-Run `node website/verify.mjs` from the repository root, or `npm test` inside `website/`. There are no website dependencies or installation steps.
+Run `node website/verify.mjs` from the repository root, or `npm test` inside `website/`. The validation runs structural checks, a 60KB uncompressed public-asset budget, and the dependency-free behavior regression suite in `test-interactions.mjs`.
 
-The publishable output is `website/public/`. Serve that directory with any static server to preview it.
+The publishable output is `website/public/`. There are no installation steps, external fonts, runtime dependencies, analytics, or network calls from the demo script. Serve this directory with any static server to preview.
 
-## Vercel
+## Vercel deployment
 
-Use the existing `tokly` project in the authorized Vercel team. Set its **Root Directory** to `website`; use Framework **Other**, the included build command `node verify.mjs`, and Output Directory `public`. Do not point the project at the repository root or publish desktop source files.
+The production hostname is https://tokly.blackielabs.com/ on the existing `tokly` project. Keep the account, domain, DNS, protection, and private repository visibility unchanged. Publish only `website/public/`, never the repository root.
 
-The intended production hostname is `tokly.blackielabs.com`. Keep the existing domain and account unchanged. Confirm the Git repository and production branch in Vercel before deployment. Deployment requires access to the existing project; do not work around a team-access error with another account or hostname.
+The current project-wide framework still targets the old Next.js site. Deploy this branch with **per-deployment overrides**, rather than changing shared project settings:
 
-## Downloads
+- Git source: the exact reviewed commit on `feature/tokly-website`.
+- Root directory: `website`.
+- Framework: `null` (Other).
+- Build command: `node verify.mjs`.
+- Install command: empty.
+- Output directory: `public`.
+- Include source files outside root: false.
+- Target: production, when explicitly authorized.
 
-The current page links to the verified v0.2.0 prerelease in the private application repository and explicitly says access is required. Replace those destinations only after public release artifacts have been approved, published, and verified. Do not make the source repository public to enable downloads. The unsigned, unnotarized developer-build warning must remain until the actual release changes.
+Normal Git-triggered previews may still fail under the old project defaults. Changing those defaults and merging this draft PR are separate actions and must not be assumed from permission to deploy a branch. Do not work around team-access errors through another account or hostname.
 
-Homebrew distribution is planned separately. Do not advertise an installation command until its public tap and architecture-specific artifact URLs and checksums have been validated.
+## Honest release state
 
-## Interactions and checks
+The page links to the v0.2.0 prerelease in the private application repository, explicitly requires repository access, and explains the 404 for visitors without access. There is no public installer or Homebrew command advertised. Replace destinations only after public artifacts, architecture-specific URLs, checksums, and tap instructions have been approved, published, and verified. Do not make the source repository public. Keep the unsigned/unnotarized warning until that release fact changes.
 
-- Accessible project tabs with arrow keys, Home, and End.
-- Temporary sample pin state, with no browser persistence or network requests.
-- Mac architecture selection with matching download guidance.
-- Native expandable FAQs.
-- Responsive layouts and reduced-motion support.
-- Explicitly illustrative projects and commits, not live workspace access.
+## Interaction
 
-The page was visually reviewed in a browser at desktop and narrow widths, including 320, 390, and 768 px containers, with no horizontal overflow. Project changes, keyboard tab navigation, pinning, architecture selection, and FAQs were tested. Any changes to release destinations require renewed link checks.
+Visitors choose one of three fictional projects, inspect its example changes and saved note, then select **Continue working** to bring that next step into focus. The action does not open a desktop app or editor. Project/pin state exists only in memory and resets on reload.
+
+Tabs support both arrow axes, Home and End, with responsive ARIA orientation. Continue focuses its revealed heading; reset restores the selected tab. Static HTML remains readable with JavaScript unavailable, and script-dependent controls start disabled. FAQs and release links are native HTML.
+
+See `QA.md` for verification coverage and limitations.
