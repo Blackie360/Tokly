@@ -44,7 +44,7 @@ test("exclusion persists and can be restored", async ({ page }) => {
   ).toHaveCount(0);
 });
 test("native-only actions explain preview limitations", async ({ page }) => {
-  await page.getByRole("button", { name: "Open in Cursor" }).first().click();
+  await page.getByRole("button", { name: "Open in Visual Studio Code" }).first().click();
   await expect(page.getByRole("alert")).toContainText(
     "available in the desktop app",
   );
@@ -124,4 +124,61 @@ test("history selection reveals older commits and persists", async ({page}) => {
   await page.getByLabel("Keep activity for").selectOption("7");
   await page.getByRole("button", {name: /Projects 4/}).click();
   await expect(page.getByText(/7-day retention limits this history/)).toBeVisible();
+});
+
+test("editor choice persists and project actions follow it", async ({page}) => {
+  await page.getByRole("button", {name: "Settings", exact:true}).click();
+  await expect(page.getByText("Sample editor choices only.", {exact:false})).toBeVisible();
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("dev.zed.Zed");
+  await page.reload();
+  await expect(page.getByRole("button", {name:"Open in Zed"}).first()).toBeVisible();
+  await page.getByRole("button", {name: "Settings", exact:true}).click();
+  await expect(page.getByLabel("Preferred editor", {exact:true})).toHaveValue("dev.zed.Zed");
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("finder");
+  await page.getByRole("button", {name:"Overview", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Open in Finder"}).first()).toBeVisible();
+});
+test("removed editor is explained and buttons fall back to Finder", async ({page}) => {
+  await page.evaluate(() => {const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);s.preferredEditor="removed.editor";localStorage.setItem("tokly-preview-v1",JSON.stringify(s));});
+  await page.reload();
+  await expect(page.getByRole("button", {name:"Open in Finder"}).first()).toBeVisible();
+  await page.getByRole("button", {name:"Settings", exact:true}).click();
+  await expect(page.getByText(/Your saved editor is not installed/)).toBeVisible();
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("auto");
+  await page.getByRole("button", {name:"Overview", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Open in Visual Studio Code"}).first()).toBeVisible();
+});
+
+test("next-step sticky note stays compact beside a long project list", async ({page}) => {
+  await page.evaluate(() => {
+    const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    s.projects[0].note="A long saved next step. ".repeat(70);
+    s.projects.push(...Array.from({length:12},(_,i)=>({...s.projects[1],id:`/sample/${i}`,name:`Project ${i}`})));
+    localStorage.setItem("tokly-preview-v1",JSON.stringify(s));
+  });
+  await page.reload();
+  for (const width of [1600,1000,600]) {
+    await page.setViewportSize({width,height:900});
+    const panel=page.locator(".continue-panel");
+    const box=await panel.boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(320);
+    expect(box!.height).toBeLessThan(430);
+    const note=page.getByLabel("Saved next step",{exact:true});
+    expect(await note.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
+    await expect(panel.getByRole("button", {name:/Open in/})).toBeVisible();
+    await expect(panel.getByRole("button", {name:/Edit next step/})).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+});
+
+test("each project offers installed editor shortcuts without changing its default", async ({page}) => {
+  const card=page.locator('.resume-actions').first();
+  await expect(card.getByRole('button',{name:'Open in Visual Studio Code',exact:true})).toHaveAttribute('title','Open in Visual Studio Code');
+  await expect(card.getByRole('button',{name:'Open in Zed',exact:true})).toBeVisible();
+  await expect(card.getByRole('button',{name:'Open in Cursor',exact:true})).toHaveCount(0);
+  await card.getByRole('button',{name:'Open in Zed',exact:true}).click();
+  await expect(page.getByText('Opening local projects is available in the desktop app.')).toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).preferredEditor)).toBe('auto');
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await expect(page.locator('.detail-toolbar').getByRole('button',{name:'Open in Zed',exact:true})).toBeVisible();
 });

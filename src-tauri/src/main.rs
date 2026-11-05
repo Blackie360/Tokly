@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod editors;
 use std::{
     path::Path,
     sync::{Arc, Mutex},
@@ -94,8 +95,21 @@ async fn rescan(s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), |s| s.reconcile()).await
 }
 #[tauri::command]
-async fn open_project(id: String, editor: bool, s: State<'_, Shared>) -> Result<(), String> {
-    with_store(s.inner().clone(), move |s| {
+async fn installed_editors() -> Result<Vec<editors::Editor>, String> {
+    tauri::async_runtime::spawn_blocking(|| editors::installed_with(editors::resolve))
+        .await
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+async fn set_preferred_editor(editor: String, s: State<'_, Shared>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || editors::validate(&editor).map(|_| editor))
+        .await
+        .map_err(|e| e.to_string())?
+        .and_then(|editor| locked(s.inner())?.set_preferred_editor(&editor))
+}
+#[tauri::command]
+async fn open_project(id: String, editor: bool, editor_id: Option<String>, s: State<'_, Shared>) -> Result<String, String> {
+    let preferred = with_store(s.inner().clone(), move |s| {
         if !s
             .snapshot()?
             .projects
@@ -105,36 +119,46 @@ async fn open_project(id: String, editor: bool, s: State<'_, Shared>) -> Result<
         {
             return Err("Project folder is unavailable.".into());
         }
-        // Fixed executable and separate arguments, never a shell command.
+        Ok((
+            id,
+            if editor {
+                editor_id.unwrap_or_else(|| s.preferred_editor())
+            } else {
+                "finder".into()
+            },
+        ))
+    })
+    .await?;
+    tauri::async_runtime::spawn_blocking(move || {
         #[cfg(target_os = "macos")]
         {
-            let mut command = std::process::Command::new("/usr/bin/open");
-            if editor {
-                command.args(["-a", "Cursor"]);
-            }
-            command.arg(&id);
-            if !command
-                .output()
-                .map_err(|e| e.to_string())?
-                .status
-                .success()
-            {
-                return Err(if editor {
-                    "Cursor could not open this project. Install Cursor or use Open folder."
-                } else {
-                    "Finder could not open this folder."
-                }
-                .into());
-            }
-            Ok(())
+            editors::open_with(
+                &preferred.1,
+                &preferred.0,
+                editors::resolve,
+                |app, project| {
+                    let mut command = std::process::Command::new("/usr/bin/open");
+                    if let Some(path) = app {
+                        command.args(["-a", path]);
+                    } else {
+                        command.args(["-b", "com.apple.finder"]);
+                    }
+                    command
+                        .arg(project)
+                        .output()
+                        .map(|o| o.status.success())
+                        .unwrap_or(false)
+                },
+            )
         }
         #[cfg(not(target_os = "macos"))]
         {
-            let _ = (id, editor);
+            let _ = preferred;
             Err("Opening projects is currently supported on macOS.".into())
         }
     })
     .await
+    .map_err(|e| e.to_string())?
 }
 fn show(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -190,7 +214,9 @@ fn main() {
             set_history_days,
             pin_project,
             rescan,
-            open_project
+            open_project,
+            installed_editors,
+            set_preferred_editor
         ])
         .build(tauri::generate_context!())
         .expect("Could not start Tokly")

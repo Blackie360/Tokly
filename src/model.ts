@@ -23,6 +23,7 @@ export interface Commit {
   label: string;
   timestamp: number;
 }
+export interface Editor { id: string; name: string; }
 export interface Snapshot {
   roots: string[];
   projects: Project[];
@@ -30,6 +31,7 @@ export interface Snapshot {
   commits: Commit[];
   retentionDays: number;
   historyDays: number;
+  preferredEditor: string;
   lastScan: number | null;
   warnings: string[];
 }
@@ -40,6 +42,7 @@ export const empty: Snapshot = {
   commits: [],
   retentionDays: 90,
   historyDays: 7,
+  preferredEditor: "auto",
   lastScan: null,
   warnings: [],
 };
@@ -77,4 +80,8 @@ export function historyExplanation(project: Project, historyDays: number, retent
   const effective = Math.min(historyDays, retentionDays);
   if (project.lastCommit < time - effective * 86400) return `Repository connected. Branch tip committed on ${date}, outside the ${effective}-day history window.`;
   return `Repository connected. Branch tip committed on ${date}. History scans up to 10,000 commits; refresh to check for updates.`;
+}
+
+export function selectedEditorName(preferred: string, installed: Editor[]): string {
+  return (preferred === "auto" ? installed[0] : installed.find(e => e.id === preferred))?.name || "Finder";
 }

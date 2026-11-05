@@ -4154,7 +4154,10 @@ dependencies = [
 name = "tokly"
 version = "0.2.0"
 dependencies = [
+ "objc2-app-kit",
+ "objc2-foundation",
  "rfd",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",

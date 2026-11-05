@@ -17,7 +17,7 @@ npm run desktop
 
 Choose a parent workspace such as `~/Projects`. Tokly discovers repositories up to 12 directory levels deep, including Git worktrees. Continue working in any editor or agent; Tokly observes file changes without needing projects opened in its own window. Closing the window leaves tracking in the menu bar. Choose **Quit Tokly** to exit. Launch at login is opt-in in Settings.
 
-Use **Open in Cursor** for the selected project or **Open folder** for Finder. Cursor must already be installed. No editor plugin is required for filesystem tracking. Merely opening an editor or folder is not recorded as work; v1 cannot attribute changes to a particular editor, person, or agent.
+Choose **Preferred editor** in Settings. Tokly detects supported installed Mac apps through the system application registry: Visual Studio Code, Cursor, Zed, Xcode, Sublime Text 4, BBEdit, Nova, IntelliJ IDEA, WebStorm, PyCharm, and VS Code Insiders. Automatic uses the first installed choice in that order; Finder is the fallback when none are available. Your explicit choice persists across relaunches. If it is removed or fails to open, Tokly opens Finder and explains the fallback. Use **Refresh installed editors** after installing an editor; detection also refreshes when the window gains focus. **Open folder** always uses Finder. No editor plugin is required for filesystem tracking. Merely opening an editor or folder is not recorded as work; v1 cannot attribute changes to a particular editor, person, or agent.
 
 ## What works
 
