@@ -1,4 +1,5 @@
 //! Local-only tracking. File contents, diffs, credentials and remote URLs are never stored.
+pub mod context;
 pub mod graph;
 mod history;
 pub mod notes;
@@ -33,6 +34,9 @@ pub struct Project {
     pub note: String,
     pub notes: Vec<notes::StickyNote>,
     pub active_note_id: String,
+    pub current_context: Option<context::Context>,
+    pub last_visit_context: Option<context::Context>,
+    pub last_visit_at: Option<i64>,
     pub last_activity: Option<i64>,
     pub excluded: bool,
     pub available: bool,
@@ -152,6 +156,9 @@ impl Store {
         db.execute_batch("CREATE TABLE IF NOT EXISTS project_notes(id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,text TEXT NOT NULL,color INTEGER NOT NULL,position INTEGER NOT NULL,UNIQUE(project_id,position));
             CREATE TABLE IF NOT EXISTS selected_notes(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,note_id TEXT NOT NULL REFERENCES project_notes(id) ON DELETE CASCADE);
             INSERT OR IGNORE INTO project_notes SELECT 'legacy:'||id,id,note,0,0 FROM projects;").map_err(err)?;
+        db.execute_batch("CREATE TABLE IF NOT EXISTS current_context(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,context TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS project_visits(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,context TEXT NOT NULL,visited_at INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS note_context(note_id TEXT PRIMARY KEY REFERENCES project_notes(id) ON DELETE CASCADE,context TEXT NOT NULL);").map_err(err)?;
         Ok(Self {
             db,
             scans: vec![],
@@ -319,6 +326,9 @@ impl Store {
                     note: r.get(4)?,
                     notes: vec![],
                     active_note_id: String::new(),
+                    current_context: None,
+                    last_visit_context: None,
+                    last_visit_at: None,
                     last_activity: r.get(5)?,
                     excluded: r.get(6)?,
                     available: r.get(7)?,
@@ -331,6 +341,19 @@ impl Store {
             .map_err(err)?;
         for project in &mut projects {
             project.notes = self.project_notes(&project.id)?;
+            if project.available && !project.excluded {
+                project.current_context = self.current_context(&project.id)?;
+            }
+            project.last_visit_context =
+                self.read_context("project_visits", "project_id", &project.id)?;
+            project.last_visit_at = self
+                .db
+                .query_row(
+                    "SELECT visited_at FROM project_visits WHERE project_id=?",
+                    [&project.id],
+                    |r| r.get(0),
+                )
+                .ok();
             project.active_note_id = self
                 .db
                 .query_row(
@@ -540,6 +563,7 @@ impl Store {
             .include_untracked(true)
             .recurse_untracked_dirs(true)
             .include_ignored(false);
+        let mut status_available = true;
         let changed = match repo.statuses(Some(&mut options)) {
             Ok(s) => s
                 .iter()
@@ -549,6 +573,7 @@ impl Store {
             Err(e) => {
                 self.warnings
                     .push(format!("Cannot read changes for {name}: {e}"));
+                status_available = false;
                 vec![]
             }
         };
@@ -565,6 +590,27 @@ impl Store {
                 ],
             )
             .map_err(err)?;
+        if status_available {
+            let mut paths = changed.clone();
+            paths.sort();
+            paths.dedup();
+            let context = context::Context {
+                branch: branch.clone(),
+                head_sha: head_id.map(|id| id.to_string()),
+                changed_files: paths,
+                observed_at: now(),
+            };
+            self.db
+                .execute(
+                    "INSERT OR REPLACE INTO current_context VALUES(?,?)",
+                    params![id, serde_json::to_string(&context).map_err(err)?],
+                )
+                .map_err(err)?;
+        } else {
+            self.db
+                .execute("DELETE FROM current_context WHERE project_id=?", [&id])
+                .map_err(err)?;
+        }
         let history = history::read(&repo, head_id, 10_000);
         let cutoff = now() - self.history_days().min(self.retention()) * 86400;
         let tx = self.db.transaction().map_err(err)?;

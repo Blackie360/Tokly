@@ -1614,3 +1614,10 @@ select {
 .colored-note-editor textarea { background: #ffffff85; color: #302638; border-color: #30263840; }
 .colored-note-editor textarea::placeholder { color: #63566c; }
 .notes-workbench > .button { margin: 4px 0 8px; }
+
+.context-caption {font-size:12px;color:var(--muted);margin:8px 18px;overflow-wrap:anywhere;}
+.context-evidence {font-size:12px;color:#c8c3d6;margin:10px 18px;line-height:1.6;overflow-wrap:anywhere;}
+.context-evidence summary {cursor:pointer;font-weight:700;}
+.context-evidence summary:focus-visible {outline:2px solid #baa3ff;outline-offset:3px;}
+.context-evidence.context-changed summary {color:#f4bfa9;}
+.context-evidence p {max-width:70ch;}

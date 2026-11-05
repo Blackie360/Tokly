@@ -336,3 +336,15 @@ test("colored note stacks preserve legacy text, independent drafts, selection an
   expect(project.stickyNotes.map((n:{text:string;color:number})=>[n.text,n.color])).toEqual([['First peach thought',0],['Second lilac thought 🚀',1]]);
   expect(project.activeNoteId).toBe(project.stickyNotes[1].id);
 });
+
+test('return context explains measurable changes and remembers Resume',async({page})=>{
+  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('tokly-preview-v1')!);const p=s.projects[0];p.currentContext={branch:'main',headSha:'b'.repeat(40),changedFiles:['new.ts'],observedAt:2};p.notes=[{id:`legacy:${p.id}`,text:p.note,color:0,position:0,context:{branch:'older',headSha:'a'.repeat(40),changedFiles:['old.ts'],observedAt:1}}];localStorage.setItem('tokly-preview-v1',JSON.stringify(s));});
+  await page.reload();const card=page.getByRole('article',{name:'Continue Care Clarity'});
+  await card.getByText('Context changed since this note was saved',{exact:true}).click();
+  await expect(card.getByText('Branch: older → main',{exact:true})).toBeVisible();
+  await expect(card.getByText(/This does not mean the note is wrong/)).toBeVisible();
+  await card.getByRole('button',{name:'Resume project',exact:true}).click();
+  await page.getByRole('button',{name:'Overview',exact:true}).click();
+  await expect(card.getByText('Same observed context since your last Resume',{exact:true})).toBeVisible();
+  await page.reload();await expect(card.getByText('Same observed context since your last Resume',{exact:true})).toBeVisible();
+});

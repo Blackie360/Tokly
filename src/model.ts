@@ -1,4 +1,5 @@
-export interface StickyNote { id: string; text: string; color: number; position: number; }
+export interface ProjectContext {branch:string;headSha:string|null;changedFiles:string[];observedAt:number;}
+export interface StickyNote {context?:ProjectContext|null; id: string; text: string; color: number; position: number; }
 export interface Project {
   id: string;
   name: string;
@@ -7,6 +8,9 @@ export interface Project {
   note: string;
   notes?: StickyNote[];
   activeNoteId?: string;
+  currentContext?:ProjectContext|null;
+  lastVisitContext?:ProjectContext|null;
+  lastVisitAt?:number|null;
   lastActivity: number | null;
   excluded: boolean;
   available: boolean;
