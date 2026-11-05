@@ -1,7 +1,7 @@
 import type { ProjectContext } from './model';
 import { contextChanges } from './contextComparison';
 export function ContextEvidence({previous,current,label}:{previous?:ProjectContext|null;current?:ProjectContext|null;label:string}) {
-  if(!previous)return <p className="context-caption">No saved context {label}. Future saves and Resume actions capture it.</p>;
+  if(!previous)return <p className="context-caption">{label.includes('note') ? 'No Git context was saved with this note yet.' : 'No previous Resume recorded.'}</p>;
   if(!current)return <p className="context-caption">Current Git context unavailable. Refresh this project before comparing.</p>;
   const changes=contextChanges(previous,current);
   return <details className={`context-evidence ${changes.length?'context-changed':''}`}>

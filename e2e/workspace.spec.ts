@@ -371,3 +371,16 @@ test('backup restore previews, cancels and confirms without silently importing',
   await expect(page.getByRole('status')).toContainText('Restored 2 notes. Existing notes were preserved.');
   expect(await page.evaluate(()=>Reflect.get(window,'restoreCalls'))).toBe(1);
 });
+
+test('focused workspace supports keyboard discovery, graph on demand and small screens',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.keyboard.press('Meta+k');const search=page.getByRole('textbox',{name:'Find a project'});await expect(search).toBeFocused();
+  await search.fill('Piko');await search.press('ArrowDown');
+  const row=page.locator('.project-list .project-row').first();await expect(row).toBeFocused();await page.keyboard.press('Enter');
+  const card=page.getByRole('article',{name:'Continue Piko Pi Agent'});await expect(card).toHaveClass(/is-current/);
+  await card.getByRole('button',{name:'Inspect Git',exact:true}).click();await expect(page.getByRole('tab',{name:'Git graph',exact:true})).toHaveAttribute('aria-selected','true');
+  await page.getByRole('button',{name:'Overview',exact:true}).click();
+  for(const width of [390,600,850,1100,1440]) {await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+  await page.setViewportSize({width:1100,height:900});
+  await page.screenshot({path:'../tokly-workspace-redesign.png',fullPage:true});
+});
