@@ -369,7 +369,7 @@ export default function App() {
                   </h1>
                   <p>
                     {page === "Overview"
-                      ? "Less catching up. More making things."
+                      ? "Find your project. Keep your next step close."
                       : page === "Projects"
                         ? current?.id || "Projects appear after discovery."
                         : page === "Weekly progress"
@@ -406,17 +406,28 @@ export default function App() {
                           ref={searchRef}
                           value={query}
                           onChange={(e) => setQuery(e.target.value)}
+                          onKeyDown={e=>{
+                            if(e.key==='Escape'){setQuery('');return;}
+                            if(e.key==='ArrowDown'){e.preventDefault();document.querySelector<HTMLButtonElement>('.project-list .project-row')?.focus();}
+                            if(e.key==='Enter' && visible[0]){setSelected(visible[0].id);document.querySelector<HTMLButtonElement>('.project-list .project-row')?.focus();}
+                          }}
                           placeholder="Find a project…"
                           aria-label="Find a project"
                         />
                         <kbd>⌘ K</kbd>
                       </label>
-                      <div className="project-list">
+                      <p className="search-hint">⌘ K to find · ↓ to browse · Enter to select</p>
+                      <div className="project-list" aria-label="Recent and pinned projects">
                         {visible.map((p, i) => (
-                          <article key={p.id} className="resume-card" aria-label={`Continue ${p.name}`}>
+                          <article key={p.id} className={`resume-card ${current?.id===p.id ? "is-current" : ""}`} aria-label={`Continue ${p.name}`}>
                           <button
                             className={`project-row ${current?.id === p.id ? "selected" : ""}`}
                             onClick={() => setSelected(p.id)}
+                            onKeyDown={e=>{
+                              if(e.key!=='ArrowDown' && e.key!=='ArrowUp')return;
+                              e.preventDefault();const rows=Array.from(document.querySelectorAll<HTMLButtonElement>('.project-list .project-row'));
+                              const index=rows.indexOf(e.currentTarget);rows[Math.max(0,Math.min(rows.length-1,index+(e.key==='ArrowDown'?1:-1)))]?.focus();
+                            }}
                           >
                             <span className={`project-icon ${colors[i % 4]}`}>
                               {i % 2 ? (
@@ -451,13 +462,14 @@ export default function App() {
                             <ChevronRight className="row-arrow" size={17} />
                           </button>
                           <p className="resume-note">{(drafts.drafts[noteDraftKey(p.id,activeNote(p).id)]?.text ?? p.note) || "No next step yet. Leave yourself a starting point."}</p>
-                          <p className="context-caption">Last recorded: {data.activity.find(a=>a.projectId===p.id)?.label || 'No file activity recorded'} · {p.branch}{p.currentContext?.headSha ? ` · ${p.currentContext.headSha.slice(0,7)}` : ''}</p>
+                          <div className="return-details"><p className="context-caption">Last recorded: {data.activity.find(a=>a.projectId===p.id)?.label || 'No file activity recorded'} · {p.branch}{p.currentContext?.headSha ? ` · ${p.currentContext.headSha.slice(0,7)}` : ''}</p>
                           <ContextEvidence previous={activeNote(p).context} current={p.currentContext} label="since this note was saved" />
                           <ContextEvidence previous={p.lastVisitContext} current={p.currentContext} label="since your last Resume" />
-                          <div className="resume-actions">
+                          </div><div className="resume-actions">
                             <button className="text-button" disabled={busy || !p.available} onClick={async()=>{await action("mark_visit",{id:p.id});setSelected(p.id);navigate("Projects");setTab("Notes");}}>Resume project</button>
                             <EditorActions editors={editors} disabled={busy || !p.available} onOpen={editorId => void action("open_project", {id: p.id, editor: true, editorId})} />
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
+                            <button className="text-button graph-shortcut" onClick={()=>{setSelected(p.id);navigate("Projects");setTab("Git graph");}}>Inspect Git</button>
                             <button className="icon-button" aria-label={`${p.pinned ? "Unpin" : "Pin"} ${p.name}`} aria-pressed={Boolean(p.pinned)} disabled={busy} onClick={() => void action("pin_project", {id: p.id, pinned: !p.pinned})}><Pin size={16}/></button>
                           </div>
                           </article>
@@ -487,7 +499,7 @@ export default function App() {
                         <Bookmark size={24} />
                       </div>
                       <span className="continue-caption">
-                        Your next little win
+                        Next step, within reach
                       </span>
                       <h2>{current?.name || "Your next project"}</h2>
                       {current && <NoteStackPicker project={current} compact busy={busy} onSelect={noteId=>void action("select_note",{id:current.id,noteId})}/>}
@@ -915,7 +927,7 @@ export default function App() {
                             if (
                               await call<boolean>("confirm_action", {
                                 message:
-                                  "Remove this workspace and its saved activity and notes?",
+                                  "Remove this workspace from Tokly and delete its saved activity and notes? Your project files on disk will not be deleted. Export a note backup first if needed.",
                               })
                             )
                               void action(
@@ -931,7 +943,7 @@ export default function App() {
                       <DiscoveryReport path={path} data={data}/>
                       </div>
                     ))}
-                    <p className="small">Search stays inside these folders: up to 12 levels, without following folder symlinks. Dependencies, caches and build folders are skipped. Excluded projects can still be found, but are not tracked.</p>
+                    <p className="small">Removing a workspace affects Tokly records only, never your project files. Export notes before removing a workspace. Search stays inside these folders: up to 12 levels, without following folder symlinks. Dependencies, caches and build folders are skipped. Excluded projects can still be found, but are not tracked.</p>
                     <button className="text-button" disabled={busy} onClick={() => void action("rescan", {}, "Workspace scan finished")}>Scan folders again</button>
                     <button
                       className="button secondary"

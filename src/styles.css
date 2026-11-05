@@ -1627,3 +1627,51 @@ select {
 .restore-preview {margin-top:16px;overflow-wrap:anywhere;}
 .restore-preview small {display:block;color:#aaa3bb;}
 .restore-preview .button {margin:8px 8px 0 0;}
+
+/* Focused workspace: an original quiet midnight surface with a lilac selection rail. */
+:root {--bg:#15182a;--surface:#1d2237;--panel:#252b43;--line:#363b55;--muted:#b1b8cf;}
+body {background:radial-gradient(ellipse at 90% 0%,#b8a2ff0b,transparent 48%),var(--bg);}
+.sidebar {background:#121526;border-right-color:#ffffff0b;}
+.topbar {height:58px;border-bottom-color:#ffffff0b;}
+.page-heading {margin-bottom:26px;}
+.page-heading .eyebrow {font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#b8a2ff;}
+.page-heading h1 {letter-spacing:-1.1px;}
+.page-heading p {color:var(--muted);}
+.nav-item.active {box-shadow:inset 3px 0 #e1d5ff,0 4px 14px #00000016;}
+.overview-layout {align-items:start;gap:26px;}
+.project-section {min-width:0;}
+.project-section .section-heading {margin-bottom:12px;}
+.search-box {background:#101426;border:1px solid #73719b;border-radius:12px;box-shadow:0 3px 15px #00000014;}
+.search-box:focus-within {border-color:var(--lilac);box-shadow:0 0 0 3px #b8a2ff16;}
+.search-hint {font-size:10px;color:var(--muted);margin:8px 2px 16px;}
+.project-list {gap:10px;}
+.resume-card {background:#1e2337;border:1px solid #ffffff12;border-radius:14px;box-shadow:0 3px 12px #0000000b;}
+.resume-card.is-current {border-color:#9f8ad2;background:linear-gradient(110deg,#b8a2ff0c,#1e2337 65%);box-shadow:inset 3px 0 #b8a2ff;}
+.resume-card .project-row {background:transparent;padding-top:15px;padding-bottom:12px;}
+.resume-card .project-row:hover {background:#ffffff04;}
+.resume-card .project-info strong {font-size:13px;}
+.resume-card .project-meta {font-size:10px;}
+.resume-note {font-size:12px;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:11px;border-left:2px solid #f4bfa966;padding-left:10px;margin-left:18px;}
+.resume-card:not(.is-current) .return-details {display:none;}
+.return-details {border-top:1px solid #ffffff0a;margin:0 16px 12px;padding-top:4px;}
+.return-details .context-caption,.return-details .context-evidence {margin:7px 0;font-size:11px;}
+.resume-actions {gap:10px;padding-bottom:14px;}
+.resume-actions .text-button {font-size:11px;}
+.resume-actions > .text-button:first-child {color:#e0d4ff;font-weight:800;}
+.resume-card:not(.is-current) .graph-shortcut {display:none;}
+.continue-panel {padding:18px;border:1px solid #ffffff20;border-radius:5px 15px 15px 15px;}
+.continue-panel .bookmark-icon {display:none;}
+.continue-caption {letter-spacing:.5px;text-transform:uppercase;margin:3px 0 8px;}
+.continue-panel h2 {font-size:21px;line-height:1.3;overflow-wrap:anywhere;}
+.continue-panel > p {font-size:13px;line-height:1.65;max-height:6.6em;margin:10px 0 16px;}
+.continue-panel .button.dark {border-radius:9px;min-height:38px;}
+.continue-doodle {opacity:.15;pointer-events:none;}
+.activity-section {border-top:1px solid #ffffff0d;padding-top:20px;margin-top:30px;}
+.workspace-report {background:#1d2237;border:1px solid #ffffff12;padding:12px;border-radius:12px;}
+.folder-setting {margin-bottom:10px;}
+.notes-workbench {min-width:0;}
+.colored-note-editor {box-shadow:0 8px 25px #00000012;}
+@media (min-width:1101px) {.app-shell {grid-template-columns:200px minmax(0,1fr);} .sidebar {padding-left:14px;padding-right:14px;} main {padding-top:26px;} }
+@media (min-width:851px) {.continue-panel {position:sticky;top:24px;} }
+@media (max-width:850px) {.continue-panel {position:static;} .search-hint {font-size:11px;} }
+@media (max-width:570px) {.resume-actions {gap:8px;} .resume-actions .editor-actions {flex-basis:100%;} .return-details {margin-left:12px;margin-right:12px;} .project-info strong {overflow-wrap:anywhere;} .restore-notes input[type=file] {max-width:100%;} }
