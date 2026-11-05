@@ -31,6 +31,7 @@ pub struct Project {
     pub last_activity: Option<i64>,
     pub excluded: bool,
     pub available: bool,
+    pub pinned: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -81,6 +82,20 @@ impl Store {
   CREATE INDEX IF NOT EXISTS activity_time ON activity(timestamp);
   CREATE TABLE IF NOT EXISTS commits(project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,sha TEXT NOT NULL,label TEXT NOT NULL,timestamp INTEGER NOT NULL,PRIMARY KEY(project_id,sha));
   CREATE INDEX IF NOT EXISTS commit_time ON commits(timestamp);").map_err(err)?;
+        let has_pinned: bool = db
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pragma_table_info('projects') WHERE name='pinned')",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(err)?;
+        if !has_pinned {
+            db.execute(
+                "ALTER TABLE projects ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
+                [],
+            )
+            .map_err(err)?;
+        }
         Ok(Self {
             db,
             last_scan: None,
@@ -191,6 +206,20 @@ impl Store {
         }
         Ok(())
     }
+    pub fn pin_project(&mut self, id: &str, pinned: bool) -> Result<()> {
+        if self
+            .db
+            .execute(
+                "UPDATE projects SET pinned=? WHERE id=?",
+                params![pinned, id],
+            )
+            .map_err(err)?
+            == 0
+        {
+            return Err("Project not found.".into());
+        }
+        Ok(())
+    }
     fn project_paths(&self) -> Result<Vec<String>> {
         let mut s = self.db.prepare("SELECT id FROM projects").map_err(err)?;
         let rows = s.query_map([], |r| r.get(0)).map_err(err)?;
@@ -198,7 +227,7 @@ impl Store {
             .map_err(err)
     }
     pub fn snapshot(&self) -> Result<Snapshot> {
-        let mut q=self.db.prepare("SELECT id,name,branch,changed,note,last_activity,excluded,available FROM projects ORDER BY last_activity DESC,name").map_err(err)?;
+        let mut q=self.db.prepare("SELECT id,name,branch,changed,note,last_activity,excluded,available,pinned FROM projects ORDER BY pinned DESC,last_activity DESC,name").map_err(err)?;
         let projects = q
             .query_map([], |r| {
                 let changed: String = r.get(3)?;
@@ -211,6 +240,7 @@ impl Store {
                     last_activity: r.get(5)?,
                     excluded: r.get(6)?,
                     available: r.get(7)?,
+                    pinned: r.get(8)?,
                 })
             })
             .map_err(err)?
@@ -757,6 +787,7 @@ mod tests {
             .execute("INSERT INTO settings VALUES('paused','true')", [])
             .unwrap();
         persisted.set_retention(30).unwrap();
+        persisted.pin_project(p.to_str().unwrap(), true).unwrap();
         drop(persisted);
         let mut reopened = Store::open(&db).unwrap();
         reopened.reconcile().unwrap();
@@ -780,6 +811,7 @@ mod tests {
             0
         );
         assert_eq!(restored.retention_days, 30);
+        assert!(restored.projects[0].pinned);
         assert_eq!(restored.projects[0].note, "Pick up here");
         assert_eq!(restored.roots.len(), 1);
     }

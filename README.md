@@ -22,7 +22,8 @@ Use **Open in Cursor** for the selected project or **Open folder** for Finder. C
 - Native folder approval, automatic Git discovery, exclusions and restoring excluded projects.
 - Debounced file activity with metadata stored in local SQLite.
 - Branch, working-tree changes, recent commits, and disconnected-folder status.
-- Per-project next-step notes with explicit Save and local persistence.
+- Continue working cards with saved next steps, branch, working-tree status and direct editor access.
+- Pin projects to keep them first; pins and next-step notes persist locally.
 - Overview, project Activity / Changes / Notes, weekly progress, and Settings.
 - Automatic monitoring after folder approval, menu bar access, close-to-background, and opt-in login startup.
 - Configurable 7 / 30 / 90 / 365-day activity retention.

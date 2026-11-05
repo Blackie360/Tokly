@@ -16,6 +16,7 @@ import {
   GitCommitHorizontal,
   LayoutDashboard,
   LoaderCircle,
+  Pin,
   Plus,
   RefreshCw,
   Search,
@@ -94,7 +95,7 @@ export default function App() {
         .then(setLogin)
         .catch((e) => setError(String(e)));
   }, []);
-  const projects = data.projects.filter((p) => !p.excluded);
+  const projects = data.projects.filter((p) => !p.excluded).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
   const visible = projects.filter((p) =>
     `${p.name} ${p.branch} ${p.id}`.toLowerCase().includes(query.toLowerCase()),
   );
@@ -319,7 +320,7 @@ export default function App() {
                   </div>
                   <h1>
                     {page === "Overview"
-                      ? "Back to your projects"
+                      ? "Continue working"
                       : page === "Projects"
                         ? current?.name || "Your projects"
                         : page === "Weekly progress"
@@ -357,7 +358,7 @@ export default function App() {
                           Your projects <span>{projects.length}</span>
                         </h2>
                         <span className="subtle">
-                          Sorted by latest file activity
+                          Pinned first, then recent activity
                         </span>
                       </div>
                       <label className="search-box">
@@ -373,8 +374,8 @@ export default function App() {
                       </label>
                       <div className="project-list">
                         {visible.map((p, i) => (
+                          <article key={p.id} className="resume-card" aria-label={`Continue ${p.name}`}>
                           <button
-                            key={p.id}
                             className={`project-row ${current?.id === p.id ? "selected" : ""}`}
                             onClick={() => setSelected(p.id)}
                           >
@@ -410,6 +411,13 @@ export default function App() {
                             </span>
                             <ChevronRight className="row-arrow" size={17} />
                           </button>
+                          <p className="resume-note">{p.note || "No next step yet. Leave yourself a starting point."}</p>
+                          <div className="resume-actions">
+                            <button className="button secondary" disabled={busy || !p.available} onClick={() => void action("open_project", {id: p.id, editor: true})}>Open in Cursor <ExternalLink size={14}/></button>
+                            <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
+                            <button className="icon-button" aria-label={`${p.pinned ? "Unpin" : "Pin"} ${p.name}`} aria-pressed={Boolean(p.pinned)} disabled={busy} onClick={() => void action("pin_project", {id: p.id, pinned: !p.pinned})}><Pin size={16}/></button>
+                          </div>
+                          </article>
                         ))}
                         {visible.length === 0 && (
                           <div className="empty-inline">
