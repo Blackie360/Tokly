@@ -278,3 +278,28 @@ test("note export includes saved and recovery text without changing notes", asyn
   expect(note.recoveryDraft?.text || note.savedNote).toBe('Backup this pending thought');
   await expect(page.getByText('Note backup exported',{exact:true})).toBeVisible();
 });
+
+test("installed app icons render with accessible fallback and preserve editor launch targets", async ({page}) => {
+  await page.addInitScript(() => {
+    Object.assign(window,{isTauri:true,__TAURI_INTERNALS__:{invoke:async(command:string,args:Record<string,unknown>)=>{
+      if(command==='snapshot')return JSON.parse(localStorage.getItem('tokly-preview-v1')!);
+      if(command==='installed_editors')return [
+        {id:'com.microsoft.VSCode',name:'Visual Studio Code',iconDataUrl:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6V0kAAAAASUVORK5CYII='},
+        {id:'dev.zed.Zed',name:'Zed',iconDataUrl:'data:image/png;base64,invalid'}
+      ];
+      if(command==='open_project'){Object.assign(window,{lastEditorLaunch:args});return 'Opened in selected editor';}
+      return false;
+    }}});
+  });
+  await page.reload();
+  const card=page.locator('.resume-actions').first();
+  const vscode=card.getByRole('button',{name:'Open in Visual Studio Code',exact:true});
+  await expect(vscode.locator('img')).toBeVisible();
+  expect(await vscode.locator('img').evaluate((el:HTMLImageElement)=>el.complete && el.naturalWidth>0)).toBe(true);
+  const zed=card.getByRole('button',{name:'Open in Zed',exact:true});
+  await expect(zed.locator('.editor-monogram')).toHaveText('Z');
+  await expect(zed).toHaveAttribute('title','Open in Zed');
+  await zed.click();
+  expect(await page.evaluate(()=>Reflect.get(window,'lastEditorLaunch').editorId)).toBe('dev.zed.Zed');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).preferredEditor)).toBe('auto');
+});

@@ -19,15 +19,26 @@ pub const CATALOG: &[(&str, &str)] = &[
 ];
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Editor {
     id: &'static str,
     name: &'static str,
+    icon_data_url: Option<String>,
 }
 
-pub fn installed_with(mut resolve: impl FnMut(&str) -> Option<String>) -> Vec<Editor> {
+pub fn installed_with(
+    mut resolve: impl FnMut(&str) -> Option<String>,
+    mut icon: impl FnMut(&str) -> Option<String>,
+) -> Vec<Editor> {
     CATALOG
         .iter()
-        .filter_map(|&(id, name)| resolve(id).map(|_| Editor { id, name }))
+        .filter_map(|&(id, name)| {
+            resolve(id).map(|path| Editor {
+                id,
+                name,
+                icon_data_url: icon(&path),
+            })
+        })
         .collect()
 }
 
@@ -43,6 +54,61 @@ pub fn resolve(id: &str) -> Option<String> {
 
 #[cfg(not(target_os = "macos"))]
 pub fn resolve(_: &str) -> Option<String> {
+    None
+}
+
+// Use the installed bundle's own icon, exactly as macOS presents it. No web
+// downloads or bundled approximations; a missing icon must not hide the editor.
+#[cfg(target_os = "macos")]
+pub fn app_icon(path: &str) -> Option<String> {
+    use objc2::AllocAnyThread;
+    use objc2_app_kit::{
+        NSBitmapImageFileType, NSBitmapImageRep, NSCalibratedRGBColorSpace, NSCompositingOperation,
+        NSGraphicsContext, NSWorkspace,
+    };
+    use objc2_foundation::{
+        NSDataBase64EncodingOptions, NSDictionary, NSPoint, NSRect, NSSize, NSString,
+    };
+    if !std::path::Path::new(path).is_dir() {
+        return None;
+    }
+    objc2::rc::autoreleasepool(|_| {
+        let image = NSWorkspace::sharedWorkspace().iconForFile(&NSString::from_str(path));
+        // Rasterize at 2x the displayed size instead of exporting a potentially
+        // megabyte-sized 1024px icon representation.
+        let bitmap = unsafe {
+            NSBitmapImageRep::initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel(
+            NSBitmapImageRep::alloc(), std::ptr::null_mut(), 48,48,8,4,true,false,NSCalibratedRGBColorSpace,0,0
+        )
+        }?;
+        let context = NSGraphicsContext::graphicsContextWithBitmapImageRep(&bitmap)?;
+        NSGraphicsContext::saveGraphicsState_class();
+        NSGraphicsContext::setCurrentContext(Some(&context));
+        image.drawInRect_fromRect_operation_fraction(
+            NSRect::new(NSPoint::new(0., 0.), NSSize::new(48., 48.)),
+            NSRect::new(NSPoint::new(0., 0.), NSSize::new(0., 0.)),
+            NSCompositingOperation::Copy,
+            1.,
+        );
+        NSGraphicsContext::restoreGraphicsState_class();
+        // Empty properties contain no incorrectly typed encoding options.
+        let png = unsafe {
+            bitmap.representationUsingType_properties(
+                NSBitmapImageFileType::PNG,
+                &NSDictionary::new(),
+            )
+        }?;
+        if png.length() > 256 * 1024 {
+            return None;
+        }
+        Some(format!(
+            "data:image/png;base64,{}",
+            png.base64EncodedStringWithOptions(NSDataBase64EncodingOptions::empty())
+        ))
+    })
+}
+#[cfg(not(target_os = "macos"))]
+pub fn app_icon(_: &str) -> Option<String> {
     None
 }
 
@@ -100,7 +166,8 @@ mod tests {
     #[test]
     fn lists_only_installed_apps_and_opens_the_selected_editor() {
         let resolve = |id: &str| (id == "dev.zed.Zed").then(|| "/Applications/Zed.app".to_string());
-        let options = installed_with(resolve);
+        let options = installed_with(resolve, |_| None);
+        assert!(options[0].icon_data_url.is_none());
         assert_eq!(options.len(), 1);
         assert_eq!(options[0].name, "Zed");
         let result = open_with(
@@ -143,6 +210,22 @@ mod tests {
         )
         .unwrap();
         assert_eq!(calls, vec![Some("/Zed.app".into()), None]);
+    }
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn reads_installed_app_icon_as_png_and_handles_missing_bundle() {
+        let icon = app_icon("/System/Library/CoreServices/Finder.app").expect("macOS Finder icon");
+        assert!(icon.starts_with("data:image/png;base64,iVBOR"));
+        assert!(icon.len() < 20_000);
+        for id in ["com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92"] {
+            if let Some(path) = resolve(id) {
+                assert!(
+                    app_icon(&path).is_some(),
+                    "Installed editor icon should render: {id}"
+                );
+            }
+        }
+        assert!(app_icon("/not-installed/Tokly-test-editor.app").is_none());
     }
     #[test]
     fn automatic_selection_and_no_editor_fallback() {
