@@ -1621,3 +1621,9 @@ select {
 .context-evidence summary:focus-visible {outline:2px solid #baa3ff;outline-offset:3px;}
 .context-evidence.context-changed summary {color:#f4bfa9;}
 .context-evidence p {max-width:70ch;}
+
+.restore-notes {margin:24px 0;padding:20px;border:1px solid #ffffff24;border-radius:14px;}
+.restore-notes input[type=file] {max-width:220px;font-size:12px;}
+.restore-preview {margin-top:16px;overflow-wrap:anywhere;}
+.restore-preview small {display:block;color:#aaa3bb;}
+.restore-preview .button {margin:8px 8px 0 0;}

@@ -1,3 +1,4 @@
+import { RestoreNotes } from "./RestoreNotes";
 import { ContextEvidence } from "./ContextEvidence";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -1045,11 +1046,12 @@ export default function App() {
                     </div>
                     <p className="small">Tokly does not upload source files or tracking data and has no cloud sync or telemetry. Git graph reads local metadata without fetching or changing repositories. Other editors, backup services and shared folders follow their own privacy settings.</p>
                     <p className="small">The local database is not encrypted by Tokly. Protect this Mac and be careful when sharing exports. Activity retention deletes old activity metadata; your saved notes remain until you remove them or their workspace.</p>
-                    <div className="setting-row"><div><strong>Back up your next steps</strong><p>Export saved notes and any pending recovery drafts as JSON. The file includes project names and paths; choose a private location. Import is not available yet.</p></div><button className="button secondary" disabled={busy} onClick={async () => {
+                    <div className="setting-row"><div><strong>Back up your next steps</strong><p>Export saved notes and any pending recovery drafts as JSON. The file includes project names and paths; choose a private location. Restore a backup below without replacing existing notes.</p></div><button className="button secondary" disabled={busy} onClick={async () => {
                       setBusy(true);setError("");
                       try {const saved=await call<boolean>("export_notes", {drafts:Object.values(drafts.drafts)});if(saved)setToast("Note backup exported");}
                       catch(e){setError(String(e));}finally{setBusy(false);}
                     }}>Export note backup</button></div>
+                    <RestoreNotes onRestored={refresh}/>
                     <div className="setting-row">
                       <div>
                         <label htmlFor="retention">

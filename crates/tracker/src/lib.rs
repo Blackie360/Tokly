@@ -3,6 +3,7 @@ pub mod context;
 pub mod graph;
 mod history;
 pub mod notes;
+pub mod restore;
 use chrono::Utc;
 use git2::{Repository, StatusOptions};
 use notify::{RecursiveMode, Watcher};

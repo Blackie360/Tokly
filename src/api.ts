@@ -117,6 +117,9 @@ export async function call<T = void>(
       break;
     case "rescan":
       break;
+    case "preview_restore":
+    case "restore_notes":
+      throw new Error("Restore is available in the macOS desktop app. This browser is a sample workspace.");
     case "open_project":
       throw new Error(
         "Opening local projects is available in the desktop app.",
