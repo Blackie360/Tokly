@@ -60,6 +60,7 @@ pub struct Snapshot {
     pub commits: Vec<Commit>,
     pub retention_days: i64,
     pub history_days: i64,
+    pub preferred_editor: String,
     pub last_scan: Option<i64>,
     pub warnings: Vec<String>,
 }
@@ -77,7 +78,7 @@ impl Store {
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
   CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-  INSERT OR IGNORE INTO settings VALUES('retention','90'),('history','7');
+  INSERT OR IGNORE INTO settings VALUES('retention','90'),('history','7'),('editor','auto');
   DELETE FROM settings WHERE key='paused';
   CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,name TEXT NOT NULL,branch TEXT NOT NULL DEFAULT '',changed TEXT NOT NULL DEFAULT '[]',note TEXT NOT NULL DEFAULT '',last_activity INTEGER,excluded INTEGER NOT NULL DEFAULT 0,available INTEGER NOT NULL DEFAULT 1);
   CREATE TABLE IF NOT EXISTS activity(id INTEGER PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,kind TEXT NOT NULL,label TEXT NOT NULL,timestamp INTEGER NOT NULL);
@@ -150,6 +151,19 @@ impl Store {
                     .map_err(err)?;
             }
         }
+        Ok(())
+    }
+    pub fn preferred_editor(&self) -> String {
+        self.db
+            .query_row("SELECT value FROM settings WHERE key='editor'", [], |r| {
+                r.get(0)
+            })
+            .unwrap_or_else(|_| "auto".into())
+    }
+    pub fn set_preferred_editor(&mut self, editor: &str) -> Result<()> {
+        self.db
+            .execute("UPDATE settings SET value=? WHERE key='editor'", [editor])
+            .map_err(err)?;
         Ok(())
     }
     pub fn history_days(&self) -> i64 {
@@ -312,6 +326,7 @@ impl Store {
             commits,
             retention_days: self.retention(),
             history_days: self.history_days(),
+            preferred_editor: self.preferred_editor(),
             last_scan: self.last_scan,
             warnings: self.warnings.clone(),
         })
@@ -882,6 +897,7 @@ mod tests {
         persisted.set_retention(30).unwrap();
         persisted.pin_project(p.to_str().unwrap(), true).unwrap();
         persisted.set_history_days(30).unwrap();
+        persisted.set_preferred_editor("dev.zed.Zed").unwrap();
         drop(persisted);
         let mut reopened = Store::open(&db).unwrap();
         reopened.reconcile().unwrap();
@@ -906,6 +922,7 @@ mod tests {
         );
         assert_eq!(restored.retention_days, 30);
         assert_eq!(restored.history_days, 30);
+        assert_eq!(restored.preferred_editor, "dev.zed.Zed");
         assert!(restored.projects[0].pinned);
         assert_eq!(restored.projects[0].note, "Pick up here");
         assert_eq!(restored.roots.len(), 1);

@@ -23,6 +23,11 @@ export async function call<T = void>(
   switch (command) {
     case "confirm_action":
       return window.confirm(String(args.message)) as T;
+    case "installed_editors":
+      return [{id: "com.microsoft.VSCode", name: "Visual Studio Code"}, {id: "dev.zed.Zed", name: "Zed"}] as T;
+    case "set_preferred_editor":
+      s.preferredEditor = String(args.editor);
+      break;
     case "snapshot":
       return s as T;
     case "add_root":

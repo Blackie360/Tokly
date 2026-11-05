@@ -31,6 +31,8 @@ import {
   empty,
   inPeriod,
   historyExplanation,
+  selectedEditorName,
+  type Editor,
   relative,
   weekDays,
   type Project,
@@ -58,6 +60,19 @@ export default function App() {
   const [noteDirty, setNoteDirty] = useState(false);
   const [week, setWeek] = useState(0);
   const [login, setLogin] = useState(false);
+  const [editors, setEditors] = useState<Editor[]>([]);
+  const refreshEditors = useCallback(async () => {
+    try { setEditors(await call<Editor[]>("installed_editors")); } catch(e) { setError(String(e)); }
+  }, []);
+  useEffect(() => {
+    void refreshEditors();
+    const onFocus = () => void refreshEditors();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshEditors]);
+  const editorName = selectedEditorName(data.preferredEditor, editors);
+  const missingEditor = !["auto", "finder"].includes(data.preferredEditor) && !editors.some(e => e.id === data.preferredEditor);
+
   const searchRef = useRef<HTMLInputElement>(null);
   const refresh = useCallback(async () => {
     try {
@@ -117,7 +132,8 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
-      await call(command, args);
+      const result = await call<unknown>(command, args);
+      if (command === "open_project") { if (typeof result === "string") setToast(result); void refreshEditors(); }
       await refresh();
       if (message) setToast(message);
     } catch (e) {
@@ -414,7 +430,7 @@ export default function App() {
                           </button>
                           <p className="resume-note">{p.note || "No next step yet. Leave yourself a starting point."}</p>
                           <div className="resume-actions">
-                            <button className="button secondary" disabled={busy || !p.available} onClick={() => void action("open_project", {id: p.id, editor: true})}>Open in Cursor <ExternalLink size={14}/></button>
+                            <button className="button secondary" disabled={busy || !p.available} onClick={() => void action("open_project", {id: p.id, editor: true})}>Open in {editorName} <ExternalLink size={14}/></button>
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
                             <button className="icon-button" aria-label={`${p.pinned ? "Unpin" : "Pin"} ${p.name}`} aria-pressed={Boolean(p.pinned)} disabled={busy} onClick={() => void action("pin_project", {id: p.id, pinned: !p.pinned})}><Pin size={16}/></button>
                           </div>
@@ -464,7 +480,7 @@ export default function App() {
                               })
                             }
                           >
-                            Open in Cursor <ExternalLink size={15} />
+                            Open in {editorName} <ExternalLink size={15} />
                           </button>
                           <button
                             className="continue-link"
@@ -544,6 +560,7 @@ export default function App() {
                             <GitBranch size={15} />
                             {current.branch}
                           </span>
+                          <button className="text-button" disabled={busy || !current.available} onClick={() => void action("open_project", {id: current.id, editor: true})}>Open in {editorName} <ExternalLink size={14}/></button>
                           <button
                             className="text-button"
                             disabled={busy || !current.available}
@@ -938,6 +955,23 @@ export default function App() {
                           ))}
                       </div>
                     )}
+                  </section>
+                  <section className="settings-group">
+                    <div className="setting-heading">
+                      <span className="setting-icon"><Code2 size={21}/></span>
+                      <div><h2>Your code editor</h2><p>{native ? "Choose an installed editor for project buttons. Finder is always available." : "Sample editor choices only. Installed Mac apps are detected in the desktop app."}</p></div>
+                    </div>
+                    <div className="setting-row">
+                      <label htmlFor="preferred-editor">Preferred editor</label>
+                      <select id="preferred-editor" value={data.preferredEditor} disabled={busy} onChange={e => void action("set_preferred_editor", {editor: e.target.value}, "Editor preference saved")}>
+                        <option value="auto">Automatic ({editors[0]?.name || "Finder"})</option>
+                        <option value="finder">Finder</option>
+                        {editors.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        {missingEditor && <option value={data.preferredEditor} disabled>Saved editor (not installed)</option>}
+                      </select>
+                    </div>
+                    {missingEditor && <p className="small">Your saved editor is not installed. Projects will open in Finder until you choose another editor.</p>}
+                    <button className="text-button" disabled={busy} onClick={() => void refreshEditors()}>Refresh installed editors</button>
                   </section>
                   <section className="settings-group">
                     <div className="setting-heading">

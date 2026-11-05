@@ -44,7 +44,7 @@ test("exclusion persists and can be restored", async ({ page }) => {
   ).toHaveCount(0);
 });
 test("native-only actions explain preview limitations", async ({ page }) => {
-  await page.getByRole("button", { name: "Open in Cursor" }).first().click();
+  await page.getByRole("button", { name: "Open in Visual Studio Code" }).first().click();
   await expect(page.getByRole("alert")).toContainText(
     "available in the desktop app",
   );
@@ -124,4 +124,27 @@ test("history selection reveals older commits and persists", async ({page}) => {
   await page.getByLabel("Keep activity for").selectOption("7");
   await page.getByRole("button", {name: /Projects 4/}).click();
   await expect(page.getByText(/7-day retention limits this history/)).toBeVisible();
+});
+
+test("editor choice persists and project actions follow it", async ({page}) => {
+  await page.getByRole("button", {name: "Settings", exact:true}).click();
+  await expect(page.getByText("Sample editor choices only.", {exact:false})).toBeVisible();
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("dev.zed.Zed");
+  await page.reload();
+  await expect(page.getByRole("button", {name:"Open in Zed"}).first()).toBeVisible();
+  await page.getByRole("button", {name: "Settings", exact:true}).click();
+  await expect(page.getByLabel("Preferred editor", {exact:true})).toHaveValue("dev.zed.Zed");
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("finder");
+  await page.getByRole("button", {name:"Overview", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Open in Finder"}).first()).toBeVisible();
+});
+test("removed editor is explained and buttons fall back to Finder", async ({page}) => {
+  await page.evaluate(() => {const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);s.preferredEditor="removed.editor";localStorage.setItem("tokly-preview-v1",JSON.stringify(s));});
+  await page.reload();
+  await expect(page.getByRole("button", {name:"Open in Finder"}).first()).toBeVisible();
+  await page.getByRole("button", {name:"Settings", exact:true}).click();
+  await expect(page.getByText(/Your saved editor is not installed/)).toBeVisible();
+  await page.getByLabel("Preferred editor", {exact:true}).selectOption("auto");
+  await page.getByRole("button", {name:"Overview", exact:true}).click();
+  await expect(page.getByRole("button", {name:"Open in Visual Studio Code"}).first()).toBeVisible();
 });
