@@ -6,7 +6,7 @@ function read(): Snapshot {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || "null");
     if (!saved) return structuredClone(empty);
-    return {...empty, ...saved, projects: saved.projects.map((p: Snapshot["projects"][number]) => ({...p, lastCommit: p.lastCommit ?? null}))};
+    return {...empty, ...saved, commits: (saved.commits || []).map((c: Snapshot["commits"][number]) => ({...c, parents: c.parents || [], missingParents: c.missingParents || []})), projects: saved.projects.map((p: Snapshot["projects"][number]) => ({...p, lastCommit: p.lastCommit ?? null}))};
   } catch {
     return structuredClone(empty);
   }
@@ -28,6 +28,14 @@ export async function call<T = void>(
     case "set_preferred_editor":
       s.preferredEditor = String(args.editor);
       break;
+    case "git_graph": {
+      const project = s.projects.find(p => p.id === args.id);
+      if (!project) throw new Error("Project unavailable");
+      const commits = s.commits.filter(c => c.projectId === args.id);
+      const offset = Number(args.offset || 0);
+      const graph = s.gitHistory.find(h => h.projectId === args.id);
+      return {earlierChildren: {}, commits: commits.slice(offset,offset+50), refs: [{name:project.branch,sha:graph?.headSha || commits[0]?.sha || "",kind:"local"}], headSha:graph?.headSha || commits[0]?.sha || null,headLabel:project.branch,shallow:graph?.shallow || false,total:commits.length,offset,nextOffset:offset+50<commits.length?offset+50:null,generation:"preview",warnings:[]} as T;
+    }
     case "snapshot":
       return s as T;
     case "add_root":
@@ -126,6 +134,7 @@ export function sample() {
   }));
   const commits = Array.from({ length: 14 }, (_, i) => ({
     projectId: projects[i % 4].id,
+    parents: [] as string[], missingParents: [] as string[],
     sha: (i.toString(16) + "a97c4b2").padEnd(40, "0"),
     label: [
       "Expand term explanations",
@@ -135,9 +144,14 @@ export function sample() {
     ][i % 4],
     timestamp: time - 3600 - i * 32000,
   }));
-  commits.push({projectId: projects[3].id, sha: "b".repeat(40), label: "Earlier desktop exploration", timestamp: time - 20 * 86400});
+  commits.push({parents: [], missingParents: [], projectId: projects[3].id, sha: "b".repeat(40), label: "Earlier desktop exploration", timestamp: time - 20 * 86400});
+  for (const project of projects) {
+    const ancestry = commits.filter(c => c.projectId === project.id);
+    ancestry.forEach((c, i) => { c.parents = ancestry[i + 1] ? [ancestry[i + 1].sha] : []; });
+  }
   write({
     ...empty,
+    gitHistory: projects.map(p => ({projectId: p.id, headSha: commits.find(c => c.projectId === p.id)?.sha || null, shallow: false, truncated: false})),
     roots: ["/Users/you/Projects"],
     projects,
     activity,

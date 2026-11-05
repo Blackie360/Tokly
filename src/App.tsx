@@ -13,7 +13,6 @@ import {
   Folder,
   FolderGit2,
   GitBranch,
-  GitCommitHorizontal,
   LayoutDashboard,
   LoaderCircle,
   Pin,
@@ -26,6 +25,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { CommitGraph } from "./CommitGraph";
 import { EditorActions } from "./EditorActions";
 import { call, native, resetPreview, sample } from "./api";
 import {
@@ -564,7 +564,7 @@ export default function App() {
                           <EditorActions editors={editors} disabled={busy || !current.available} onOpen={editorId => void action("open_project", {id: current.id, editor: true, editorId})} />
                         </div>
                         <div className="tabs" role="tablist">
-                          {["Activity", "Changes", "Notes"].map((t) => (
+                          {["Activity", "Git graph", "Changes", "Notes"].map((t) => (
                             <button
                               role="tab"
                               aria-selected={tab === t}
@@ -583,30 +583,17 @@ export default function App() {
                           {tab === "Activity" ? (
                             <>
                               <div className="history-controls">
-                                <label htmlFor="history-days">Git history</label>
+                                <label htmlFor="history-days">Activity history window</label>
                                 <select id="history-days" value={data.historyDays} disabled={busy} onChange={(e) => void action("set_history_days", {days: Number(e.target.value)}, "History updated")}>
                                   {[7,30,90].map(days => <option key={days} value={days}>Last {days} days</option>)}
                                 </select>
-                                <p className="small">Imports and shows commits from all authors reachable from the current branch. Existing collected history is kept until retention expires.</p>
+                                <p className="small">Shows commits from all authors reachable from the checked-out HEAD. Switching branches replaces this view; older cached entries stay hidden.</p>
                                 {data.retentionDays < data.historyDays && <p className="small">Your {data.retentionDays}-day retention limits this history. Increase retention in Settings to import older commits.</p>}
                               </div>
                               {!commits.some(c => c.projectId === current.id) && <p className="history-explanation" role="status">{historyExplanation(current, data.historyDays, data.retentionDays)}</p>}
 
-                              {commits
-                                .filter((c) => c.projectId === current.id)
-                                .slice(0, 20)
-                                .map((c) => (
-                                  <div className="activity-row" key={c.sha}>
-                                    <span className="activity-symbol">
-                                      <GitCommitHorizontal size={18} />
-                                    </span>
-                                    <div>
-                                      <strong>{c.label}</strong>
-                                      <span>Commit {c.sha.slice(0, 7)}</span>
-                                    </div>
-                                    <time>{relative(c.timestamp)}</time>
-                                  </div>
-                                ))}
+                              <p className="small">For all branches and dates, open the Git graph tab.</p>
+                              {commits.filter(c => c.projectId === current.id).slice(0,20).map(c => <div className="activity-row" key={c.sha}><GitBranch size={18}/><div><strong>{c.label}</strong><span>Commit {c.sha.slice(0,7)}</span></div><time>{relative(c.timestamp)}</time></div>)}
                               {activities
                                 .filter((a) => a.projectId === current.id)
                                 .slice(0, 20)
@@ -633,6 +620,8 @@ export default function App() {
                                   </div>
                                 )}
                             </>
+                          ) : tab === "Git graph" ? (
+                            <CommitGraph key={current.id} projectId={current.id} refreshToken={data.lastScan}/>
                           ) : tab === "Changes" ? (
                             <>
                               {current.changedFiles.map((f) => (

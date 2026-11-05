@@ -11,6 +11,7 @@ use tauri::{
 };
 use tokly_tracker::{Snapshot, Store};
 type Shared = Arc<Mutex<Store>>;
+type GraphState = Arc<Mutex<tokly_tracker::graph::GraphCache>>;
 fn locked(s: &Shared) -> Result<std::sync::MutexGuard<'_, Store>, String> {
     s.lock()
         .map_err(|_| "Tracking state unavailable. Restart Tokly.".into())
@@ -45,6 +46,21 @@ async fn confirm_action(message: String) -> Result<bool, String> {
 #[tauri::command]
 async fn snapshot(s: State<'_, Shared>) -> Result<Snapshot, String> {
     with_store(s.inner().clone(), |s| s.snapshot()).await
+}
+#[tauri::command]
+async fn git_graph(id: String, offset: usize, generation: Option<String>, force: bool, s: State<'_, Shared>, graph: State<'_, GraphState>) -> Result<tokly_tracker::graph::Page, String> {
+    let project = with_store(s.inner().clone(), move |s| {
+        if !s.snapshot()?.projects.iter().any(|p| p.id == id && p.available && !p.excluded) {
+            return Err("Project is unavailable or excluded.".into());
+        }
+        let canonical = Path::new(&id).canonicalize().map_err(|e| e.to_string())?;
+        if !s.roots()?.iter().any(|root| canonical.starts_with(root)) {
+            return Err("Project is outside approved workspace folders. Rescan your workspaces.".into());
+        }
+        Ok(id)
+    }).await?;
+    let cache = graph.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || cache.lock().map_err(|_| "Graph unavailable. Restart Tokly.".to_string())?.page(Path::new(&project),offset,generation.as_deref(),force)).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
 async fn add_root(s: State<'_, Shared>) -> Result<bool, String> {
@@ -182,6 +198,7 @@ fn main() {
             let shared = Arc::new(Mutex::new(store));
             app.manage(tokly_tracker::start(shared.clone()));
             app.manage(shared);
+            app.manage(Arc::new(Mutex::new(tokly_tracker::graph::GraphCache::default())));
             let open = MenuItem::with_id(app, "open", "Open Tokly", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Tokly", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
@@ -206,6 +223,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             confirm_action,
             snapshot,
+            git_graph,
             add_root,
             remove_root,
             save_note,
