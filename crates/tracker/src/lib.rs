@@ -1,4 +1,6 @@
 //! Local-only tracking. File contents, diffs, credentials and remote URLs are never stored.
+pub mod graph;
+mod history;
 use chrono::Utc;
 use git2::{Repository, StatusOptions};
 use notify::{RecursiveMode, Watcher};
@@ -45,9 +47,19 @@ pub struct Activity {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GitHistory {
+    pub project_id: String,
+    pub head_sha: Option<String>,
+    pub shallow: bool,
+    pub truncated: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Commit {
     pub project_id: String,
     pub sha: String,
+    pub parents: Vec<String>,
+    pub missing_parents: Vec<String>,
     pub label: String,
     pub timestamp: i64,
 }
@@ -58,6 +70,7 @@ pub struct Snapshot {
     pub projects: Vec<Project>,
     pub activity: Vec<Activity>,
     pub commits: Vec<Commit>,
+    pub git_history: Vec<GitHistory>,
     pub retention_days: i64,
     pub history_days: i64,
     pub preferred_editor: String,
@@ -104,6 +117,24 @@ impl Store {
             db.execute("ALTER TABLE projects ADD COLUMN last_commit INTEGER", [])
                 .map_err(err)?;
         }
+        let columns: HashSet<String> = db
+            .prepare("PRAGMA table_info(commits)")
+            .map_err(err)?
+            .query_map([], |r| r.get(1))
+            .map_err(err)?
+            .collect::<std::result::Result<_, _>>()
+            .map_err(err)?;
+        for column in ["parents", "missing_parents"] {
+            if !columns.contains(column) {
+                db.execute(
+                    &format!("ALTER TABLE commits ADD COLUMN {column} TEXT NOT NULL DEFAULT '[]'"),
+                    [],
+                )
+                .map_err(err)?;
+            }
+        }
+        db.execute_batch("CREATE TABLE IF NOT EXISTS active_commits(project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,sha TEXT NOT NULL,position INTEGER NOT NULL,PRIMARY KEY(project_id,sha));
+            CREATE TABLE IF NOT EXISTS git_history(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,head_sha TEXT,shallow INTEGER NOT NULL,truncated INTEGER NOT NULL);").map_err(err)?;
         Ok(Self {
             db,
             last_scan: None,
@@ -303,7 +334,7 @@ impl Store {
             .map_err(err)?
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(err)?;
-        let mut q=self.db.prepare("SELECT project_id,sha,label,timestamp FROM commits WHERE timestamp>=? ORDER BY timestamp DESC").map_err(err)?;
+        let mut q=self.db.prepare("SELECT c.project_id,c.sha,c.label,c.timestamp,c.parents,c.missing_parents FROM commits c JOIN active_commits a ON a.project_id=c.project_id AND a.sha=c.sha JOIN projects p ON p.id=c.project_id WHERE c.timestamp>=? AND p.available=1 AND p.excluded=0 ORDER BY c.project_id,a.position").map_err(err)?;
         let commits = q
             .query_map(
                 [now() - self.retention().min(self.history_days()) * 86400],
@@ -311,6 +342,8 @@ impl Store {
                     Ok(Commit {
                         project_id: r.get(0)?,
                         sha: r.get(1)?,
+                        parents: serde_json_compat::decode(&r.get::<_, String>(4)?),
+                        missing_parents: serde_json_compat::decode(&r.get::<_, String>(5)?),
                         label: r.get(2)?,
                         timestamp: r.get(3)?,
                     })
@@ -319,11 +352,27 @@ impl Store {
             .map_err(err)?
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(err)?;
+        let git_history = self
+            .db
+            .prepare("SELECT project_id,head_sha,shallow,truncated FROM git_history")
+            .map_err(err)?
+            .query_map([], |r| {
+                Ok(GitHistory {
+                    project_id: r.get(0)?,
+                    head_sha: r.get(1)?,
+                    shallow: r.get(2)?,
+                    truncated: r.get(3)?,
+                })
+            })
+            .map_err(err)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(err)?;
         Ok(Snapshot {
             roots: self.roots()?,
             projects,
             activity,
             commits,
+            git_history,
             retention_days: self.retention(),
             history_days: self.history_days(),
             preferred_editor: self.preferred_editor(),
@@ -376,6 +425,9 @@ impl Store {
         let repo = match Repository::open(path) {
             Ok(r) => r,
             Err(e) => {
+                self.db
+                    .execute("DELETE FROM active_commits WHERE project_id=?", [&id])
+                    .map_err(err)?;
                 self.warnings
                     .push(format!("Cannot read {}: {e}", path.display()));
                 return Ok(());
@@ -401,9 +453,13 @@ impl Store {
         if excluded {
             return Ok(());
         }
-        let branch = repo
-            .head()
-            .ok()
+        let head = repo.head().ok();
+        let head_id = head
+            .as_ref()
+            .and_then(|h| h.peel_to_commit().ok())
+            .map(|c| c.id());
+        let branch = head
+            .as_ref()
             .map(|h| {
                 if h.is_branch() {
                     h.shorthand().unwrap_or("Unknown").to_string()
@@ -440,28 +496,41 @@ impl Store {
                 params![
                     branch,
                     serde_json_compat::encode(&changed),
-                    repo.head()
-                        .ok()
-                        .and_then(|h| h.peel_to_commit().ok())
+                    head_id
+                        .and_then(|oid| repo.find_commit(oid).ok())
                         .map(|c| c.time().seconds()),
                     id
                 ],
             )
             .map_err(err)?;
-        let mut walk = repo.revwalk().map_err(err)?;
-        if walk.push_head().is_ok() {
-            walk.set_sorting(git2::Sort::TIME).map_err(err)?;
-            let cutoff = now() - self.history_days().min(self.retention()) * 86400;
-            for oid in walk.take(10000).flatten() {
-                if let Ok(c) = repo.find_commit(oid) {
-                    let t = c.time().seconds();
-                    if t < cutoff {
-                        continue;
-                    }
-                    self.db.execute("INSERT OR IGNORE INTO commits(project_id,sha,label,timestamp) VALUES(?,?,?,?)",params![id,oid.to_string(),c.summary().unwrap_or("Commit"),t]).map_err(err)?;
-                }
+        let history = history::read(&repo, head_id, 10_000);
+        let cutoff = now() - self.history_days().min(self.retention()) * 86400;
+        let tx = self.db.transaction().map_err(err)?;
+        tx.execute("DELETE FROM active_commits WHERE project_id=?", [&id])
+            .map_err(err)?;
+        tx.execute(
+            "INSERT OR REPLACE INTO git_history VALUES(?,?,?,?)",
+            params![
+                id,
+                head_id.map(|oid| oid.to_string()),
+                repo.is_shallow(),
+                history.truncated
+            ],
+        )
+        .map_err(err)?;
+        for (position, c) in history.entries.into_iter().enumerate() {
+            if c.timestamp < cutoff {
+                continue;
             }
+            tx.execute("INSERT INTO commits(project_id,sha,label,timestamp,parents,missing_parents) VALUES(?,?,?,?,?,?) ON CONFLICT(project_id,sha) DO UPDATE SET parents=excluded.parents,missing_parents=excluded.missing_parents",
+                params![id,c.sha,c.label,c.timestamp,serde_json_compat::encode(&c.parents),serde_json_compat::encode(&c.missing)]).map_err(err)?;
+            tx.execute(
+                "INSERT INTO active_commits VALUES(?,?,?)",
+                params![id, c.sha, position as i64],
+            )
+            .map_err(err)?;
         }
+        tx.commit().map_err(err)?;
         Ok(())
     }
     pub fn record_paths(&mut self, paths: impl IntoIterator<Item = PathBuf>) -> Result<()> {
@@ -738,6 +807,87 @@ mod tests {
             0
         );
         assert!(s.set_history_days(14).is_err());
+    }
+    #[test]
+    fn branch_membership_replaces_cached_ancestry_without_losing_notes() {
+        let (temp, mut s, p) = fixture();
+        let repo = Repository::open(&p).unwrap();
+        let tree_id = repo.index().unwrap().write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        let sig = git2::Signature::now("Test", "test@example.com").unwrap();
+        let root = repo.commit(None, &sig, &sig, "Root", &tree, &[]).unwrap();
+        let root_commit = repo.find_commit(root).unwrap();
+        let main = repo
+            .commit(None, &sig, &sig, "Main work", &tree, &[&root_commit])
+            .unwrap();
+        let side = repo
+            .commit(None, &sig, &sig, "Side work", &tree, &[&root_commit])
+            .unwrap();
+        let merge = repo
+            .commit(
+                None,
+                &sig,
+                &sig,
+                "Merge work",
+                &tree,
+                &[
+                    &repo.find_commit(main).unwrap(),
+                    &repo.find_commit(side).unwrap(),
+                ],
+            )
+            .unwrap();
+        repo.reference("refs/heads/main", merge, true, "fixture")
+            .unwrap();
+        repo.reference("refs/heads/side", side, true, "fixture")
+            .unwrap();
+        repo.set_head("refs/heads/main").unwrap();
+        s.add_root(temp.path()).unwrap();
+        s.reconcile().unwrap();
+        assert_eq!(s.snapshot().unwrap().commits.len(), 4);
+        assert_eq!(s.snapshot().unwrap().commits[0].parents.len(), 2);
+        s.save_note(p.to_str().unwrap(), "Keep my next step")
+            .unwrap();
+        s.pin_project(p.to_str().unwrap(), true).unwrap();
+        repo.set_head("refs/heads/side").unwrap();
+        s.reconcile().unwrap();
+        let snap = s.snapshot().unwrap();
+        assert_eq!(snap.commits.len(), 2);
+        assert!(!snap
+            .commits
+            .iter()
+            .any(|c| c.sha == main.to_string() || c.sha == merge.to_string()));
+        assert_eq!(snap.projects[0].note, "Keep my next step");
+        assert!(snap.projects[0].pinned);
+        assert_eq!(
+            s.db.query_row("SELECT count(*) FROM commits", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            4
+        );
+        repo.set_head_detached(main).unwrap();
+        s.reconcile().unwrap();
+        assert!(s.snapshot().unwrap().projects[0]
+            .branch
+            .starts_with("detached"));
+        assert_eq!(
+            s.snapshot().unwrap().git_history[0].head_sha,
+            Some(main.to_string())
+        );
+        assert_eq!(s.snapshot().unwrap().commits.len(), 2);
+        repo.set_head("refs/heads/unborn").unwrap();
+        s.reconcile().unwrap();
+        assert!(s.snapshot().unwrap().commits.is_empty());
+    }
+    #[test]
+    fn legacy_cache_migrates_without_becoming_active_history() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE commits(project_id TEXT NOT NULL,sha TEXT NOT NULL,label TEXT NOT NULL,timestamp INTEGER NOT NULL,PRIMARY KEY(project_id,sha)); INSERT INTO commits VALUES('old-project','old-sha','Legacy subject',9999999999);").unwrap();
+        let s = Store::from_connection(db).unwrap();
+        assert!(s.snapshot().unwrap().commits.is_empty());
+        assert_eq!(
+            s.db.query_row("SELECT label FROM commits", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "Legacy subject"
+        );
     }
     #[test]
     fn tracks_changes_and_notes_without_file_contents() {

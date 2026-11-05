@@ -1560,3 +1560,38 @@ select {
 .editor-shortcut:focus-visible { outline: 2px solid #b9a2ec; outline-offset: 3px; }
 .editor-shortcut:disabled { opacity: .4; cursor: not-allowed; }
 .editor-monogram { font-size: 12px; font-weight: 800; }
+
+.commit-history { margin: 16px 0; }
+.commit-graph-scroll { overflow-x: auto; max-width: 100%; }
+.commit-graph-list { list-style: none; padding: 0; margin: 12px 0; }
+.commit-graph-row { display: flex; min-height: 76px; }
+.commit-lanes { flex-shrink: 0; position: relative; }
+.commit-lanes svg { position: absolute; width: 100%; height: 100%; }
+.commit-message { flex: 1; min-width: 220px; padding: 14px 10px; border-bottom: 1px solid #ffffff0c; overflow-wrap: anywhere; }
+.commit-message > strong { display: block; font-size: 13px; white-space: pre-wrap; }
+.commit-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 11px; color: #a7abc3; margin-top: 6px; }
+.head-badge { color: #d7c7ff; }
+.commit-message details { margin-top: 6px; font-size: 11px; color: #a7abc3; }
+.commit-message summary { cursor: pointer; }
+.commit-message details p { max-width: 100%; }
+.commit-graph-scroll:focus-visible, .commit-message summary:focus-visible { outline: 2px solid #b9a2ff; outline-offset: -2px; }
+
+/* A short reveal follows mounting/new commits; no looping animation during work. */
+@media (prefers-reduced-motion: no-preference) {
+  .commit-graph-row { animation: commit-arrive 380ms ease-out both; }
+  .commit-graph-row:nth-child(2) { animation-delay: 35ms; }
+  .commit-graph-row:nth-child(3) { animation-delay: 70ms; }
+  .commit-graph-row:nth-child(n+4) { animation-delay: 100ms; }
+  .commit-lanes svg { animation: ancestry-reveal 650ms ease-out both; }
+}
+@keyframes commit-arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ancestry-reveal { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+.commit-graph-row:hover .commit-message { background: #b9a2ff08; }
+.graph-heading, .graph-pagination { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.graph-heading h3 { margin: 0; font-size: 18px; }
+.graph-refs { margin: 12px 0; font-size: 12px; }
+.graph-refs summary { cursor: pointer; color: #c9b8f2; }
+.ref-badge { display: inline-block; background: #b9a2ff14; border: 1px solid #b9a2ff24; border-radius: 5px; padding: 2px 6px; color: #c9b8f2; overflow-wrap: anywhere; }
+.graph-pagination { margin-top: 16px; }
+.graph-node { position: absolute; display: block; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 9px #b9a2ff33; }
+.graph-boundary { width: 6px; height: 6px; background: #171a2e; border: 1px solid; box-shadow: none; }

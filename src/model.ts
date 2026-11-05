@@ -17,18 +17,24 @@ export interface Activity {
   label: string;
   timestamp: number;
 }
+export interface GitHistory { projectId: string; headSha: string | null; shallow: boolean; truncated: boolean; }
 export interface Commit {
   projectId: string;
   sha: string;
+  parents: string[];
+  missingParents: string[];
   label: string;
   timestamp: number;
 }
+export interface GitRef { name: string; sha: string; kind: "local" | "remote" | "tag" | "other"; }
+export interface GraphPage { earlierChildren: Record<string,string[]>; commits: Commit[]; refs: GitRef[]; headSha: string | null; headLabel: string; shallow: boolean; total: number; offset: number; nextOffset: number | null; generation: string; warnings: string[]; }
 export interface Editor { id: string; name: string; }
 export interface Snapshot {
   roots: string[];
   projects: Project[];
   activity: Activity[];
   commits: Commit[];
+  gitHistory: GitHistory[];
   retentionDays: number;
   historyDays: number;
   preferredEditor: string;
@@ -40,6 +46,7 @@ export const empty: Snapshot = {
   projects: [],
   activity: [],
   commits: [],
+  gitHistory: [],
   retentionDays: 90,
   historyDays: 7,
   preferredEditor: "auto",

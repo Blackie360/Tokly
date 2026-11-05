@@ -114,11 +114,11 @@ test("history selection reveals older commits and persists", async ({page}) => {
   });
   await page.getByRole("button", {name: "Refresh Git status"}).click();
   await expect(page.getByText(/outside the 7-day history window/)).toBeVisible();
-  await page.getByLabel("Git history", {exact:true}).selectOption("30");
+  await page.getByLabel("Activity history window", {exact:true}).selectOption("30");
   await expect(page.getByText("Earlier desktop exploration")).toBeVisible();
   await page.reload();
   await page.getByRole("button", {name: /Projects 4/}).click();
-  await expect(page.getByLabel("Git history", {exact:true})).toHaveValue("30");
+  await expect(page.getByLabel("Activity history window", {exact:true})).toHaveValue("30");
   await page.getByRole("button", {name: "Settings", exact:true}).click();
   page.on("dialog", dialog => dialog.accept());
   await page.getByLabel("Keep activity for").selectOption("7");
@@ -181,4 +181,55 @@ test("each project offers installed editor shortcuts without changing its defaul
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).preferredEditor)).toBe('auto');
   await page.getByRole('button',{name:/Projects 4/}).click();
   await expect(page.locator('.detail-toolbar').getByRole('button',{name:'Open in Zed',exact:true})).toBeVisible();
+});
+
+test("all-history graph shows real subjects, merge parents, pagination and reduced motion", async ({page}) => {
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.evaluate(() => {
+    const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    const id=s.projects[0].id;
+    const sha=(i:number)=>i.toString(16).padStart(40,"0");
+    s.commits=Array.from({length:105},(_,i)=>({projectId:id,sha:sha(i),label:i===0?"Merge with a real long commit subject that remains completely readable without truncation — café 🚀 <script>alert(1)</script>":"Old commit "+i,timestamp:1000000000-i,parents:i===0?[sha(1),sha(2)]:i<104?[sha(i+1)]:[],missingParents:[]}));
+    s.gitHistory=[{projectId:id,headSha:sha(0),shallow:true,truncated:false}];
+    localStorage.setItem("tokly-preview-v1",JSON.stringify(s));
+  });
+  await page.reload();
+  await page.getByRole("button",{name:/Projects 4/}).click();
+  await page.getByRole("tab",{name:"Git graph",exact:true}).click();
+  await expect(page.getByText("Merge with a real long commit subject that remains completely readable without truncation — café 🚀 <script>alert(1)</script>")).toBeVisible();
+  await expect(page.getByText(/Shallow checkout:/)).toBeVisible();
+  await expect(page.getByLabel("Activity history window")).toHaveCount(0);
+  await expect(page.locator('.commit-graph-row')).toHaveCount(50);
+  await page.getByText("Merge · 2 parents",{exact:true}).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".commit-message script")).toHaveCount(0);
+  await expect(page.getByText(/Parent.*0000000000000000000000000000000000000001/)).toBeVisible();
+  expect(await page.locator('.commit-graph-row').first().evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+  await page.getByRole('button',{name:'Next commits',exact:true}).click();
+  await expect(page.getByText('51–100 of 105')).toBeVisible();
+  await page.getByRole('button',{name:'Next commits',exact:true}).click();
+  await expect(page.locator('.commit-graph-row')).toHaveCount(5);
+  await expect(page.getByRole('button',{name:'Next commits',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Previous commits',exact:true}).click();
+  await expect(page.getByText('51–100 of 105')).toBeVisible();
+  await page.setViewportSize({width:600,height:900});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("graph distinguishes missing parents and empty repositories", async ({page}) => {
+  await page.evaluate(() => {
+    const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    const id=s.projects[0].id;
+    s.commits=[{projectId:id,sha:'a'.repeat(40),label:'Partial checkout',timestamp:1,parents:['b'.repeat(40)],missingParents:['b'.repeat(40)]}];
+    localStorage.setItem("tokly-preview-v1",JSON.stringify(s));
+  });
+  await page.reload();
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Git graph',exact:true}).click();
+  await page.getByText('1 parent · history boundary',{exact:true}).click();
+  await expect(page.getByText(/not traversed \(shallow boundary or missing local object\)/)).toBeVisible();
+  await page.evaluate(() => {const s=JSON.parse(localStorage.getItem('tokly-preview-v1')!);s.commits=[];localStorage.setItem('tokly-preview-v1',JSON.stringify(s));});
+  await page.getByRole('button',{name:'Refresh graph',exact:true}).click();
+  await expect(page.getByText('No commits available from local references.')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Next commits',exact:true})).toBeDisabled();
 });
