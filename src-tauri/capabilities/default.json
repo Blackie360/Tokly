@@ -1,0 +1,6 @@
+{
+  "identifier": "main",
+  "description": "Local desktop window and user-controlled login setting.",
+  "windows": ["main"],
+  "permissions": ["core:default", "autostart:default"]
+}
