@@ -273,7 +273,7 @@ test("note export includes saved and recovery text without changing notes", asyn
   expect(download.suggestedFilename()).toBe('Tokly-notes.json');
   const stream=await download.createReadStream();const chunks=[];for await (const chunk of stream!)chunks.push(chunk);
   const backup=JSON.parse(Buffer.concat(chunks).toString());
-  expect(backup.format).toBe('Tokly note backup');expect(backup.version).toBe(1);
+  expect(backup.format).toBe('Tokly note backup');expect(backup.version).toBe(2);
   const note=backup.notes.find((n:{name:string})=>n.name==='Care Clarity');
   expect(note.recoveryDraft?.text || note.savedNote).toBe('Backup this pending thought');
   await expect(page.getByText('Note backup exported',{exact:true})).toBeVisible();
@@ -302,4 +302,37 @@ test("installed app icons render with accessible fallback and preserve editor la
   await zed.click();
   expect(await page.evaluate(()=>Reflect.get(window,'lastEditorLaunch').editorId)).toBe('dev.zed.Zed');
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).preferredEditor)).toBe('auto');
+});
+
+
+test("colored note stacks preserve legacy text, independent drafts, selection and backups", async ({page}) => {
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  const editor=page.getByRole('textbox',{name:'Where will you pick up next?'});
+  await editor.fill('First peach thought');
+  await page.getByRole('button',{name:'Add sticky note',exact:true}).click();
+  await expect(editor).toHaveValue('');
+  await editor.fill('Second lilac thought 🚀');
+  const peach=page.getByRole('button',{name:'Open note 1, Peach',exact:true});
+  await peach.focus(); await page.keyboard.press('Enter');
+  await expect(editor).toHaveValue('First peach thought');
+  await page.getByRole('button',{name:'Open note 2, Lilac',exact:true}).click();
+  await expect(editor).toHaveValue('Second lilac thought 🚀');
+  await page.getByRole('button',{name:'Piko Pi Agent',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Open note 2, Lilac',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Care Clarity',exact:true}).click();
+  await expect(editor).toHaveValue('Second lilac thought 🚀');
+  await page.reload();
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  await expect(editor).toHaveValue('Second lilac thought 🚀');
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).projects[0].notes.map((n:{text:string})=>n.text))).toEqual(['First peach thought','Second lilac thought 🚀']);
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const downloaded=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Export note backup',exact:true}).click();
+  const stream=await (await downloaded).createReadStream(); const chunks=[]; for await(const chunk of stream!)chunks.push(chunk);
+  const backup=JSON.parse(Buffer.concat(chunks).toString());
+  const project=backup.notes.find((n:{name:string})=>n.name==='Care Clarity');
+  expect(project.stickyNotes.map((n:{text:string;color:number})=>[n.text,n.color])).toEqual([['First peach thought',0],['Second lilac thought 🚀',1]]);
+  expect(project.activeNoteId).toBe(project.stickyNotes[1].id);
 });

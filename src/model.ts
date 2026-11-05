@@ -1,9 +1,12 @@
+export interface StickyNote { id: string; text: string; color: number; position: number; }
 export interface Project {
   id: string;
   name: string;
   branch: string;
   changedFiles: string[];
   note: string;
+  notes?: StickyNote[];
+  activeNoteId?: string;
   lastActivity: number | null;
   excluded: boolean;
   available: boolean;
@@ -95,3 +98,11 @@ export function historyExplanation(project: Project, historyDays: number, retent
 export function selectedEditorName(preferred: string, installed: Editor[]): string {
   return (preferred === "auto" ? installed[0] : installed.find(e => e.id === preferred))?.name || "Finder";
 }
+
+export function projectNotes(project:Project):StickyNote[] {return project.notes?.length ? project.notes : [{id:`legacy:${project.id}`,text:project.note,color:0,position:0}];}
+export function activeNote(project:Project):StickyNote {const notes=projectNotes(project);return notes.find(n=>n.id===project.activeNoteId)||notes[0];}
+export const noteColors=[
+  {name:"Peach",value:"#f4bfa9"},{name:"Lilac",value:"#c8b5f7"},{name:"Mint",value:"#a9dfc7"},{name:"Sky",value:"#aad7f0"},
+  {name:"Butter",value:"#eddf98"},{name:"Rose",value:"#edb3cc"},{name:"Lavender",value:"#d7c5ed"},{name:"Seafoam",value:"#9edddc"},
+  {name:"Apricot",value:"#edcb93"},{name:"Periwinkle",value:"#b6c4f3"},{name:"Pistachio",value:"#c6dea2"},{name:"Blush",value:"#efb6b2"}
+];

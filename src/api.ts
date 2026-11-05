@@ -1,12 +1,18 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { empty, type Snapshot } from "./model";
+import { empty, projectNotes, type Snapshot } from "./model";
 export const native = isTauri();
 const key = "tokly-preview-v1";
 function read(): Snapshot {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || "null");
     if (!saved) return structuredClone(empty);
-    return {...empty, ...saved, commits: (saved.commits || []).map((c: Snapshot["commits"][number]) => ({...c, parents: c.parents || [], missingParents: c.missingParents || []})), projects: saved.projects.map((p: Snapshot["projects"][number]) => ({...p, lastCommit: p.lastCommit ?? null}))};
+    return {...empty, ...saved, commits: (saved.commits || []).map((c: Snapshot["commits"][number]) => ({...c, parents: c.parents || [], missingParents: c.missingParents || []})), projects: saved.projects.map((p: Snapshot["projects"][number]) => {
+      const notes=projectNotes(p).map(n=>({...n}));
+      const selected=p.activeNoteId || notes[0].id;
+      const active=notes.find(n=>n.id===selected)||notes[0];
+      active.text=p.note;
+      return {...p,lastCommit:p.lastCommit??null,notes,activeNoteId:active.id};
+    })};
   } catch {
     return structuredClone(empty);
   }
@@ -43,17 +49,38 @@ export async function call<T = void>(
         "Folder access is available in the macOS desktop app. Use the sample workspace to explore this preview.",
       );
     case "export_notes": {
-      const drafts=(args.drafts || []) as {id:string;text:string;updatedAt:number}[];
-      const notes=s.projects.map(p=>({projectId:p.id,name:p.name,savedNote:p.note,recoveryDraft:drafts.find(d=>d.id===p.id)||null}));
-      const orphaned=drafts.filter(d=>!s.projects.some(p=>p.id===d.id)).map(d=>({projectId:d.id,name:"Recovered draft (project no longer listed)",savedNote:null,recoveryDraft:d}));
-      const blob=new Blob([JSON.stringify({format:"Tokly note backup",version:1,exportedAt:Math.floor(Date.now()/1000),notes:[...notes,...orphaned]},null,2)],{type:"application/json"});
+      const drafts=(args.drafts || []) as {id:string;noteId?:string;text:string;updatedAt:number}[];
+      const matches=(draft:typeof drafts[number],id:string,noteId:string)=>draft.id===id && (draft.noteId || `legacy:${id}`)===noteId;
+      const notes=s.projects.map(p=>({projectId:p.id,name:p.name,savedNote:projectNotes(p)[0].text,activeNoteId:p.activeNoteId,recoveryDraft:drafts.find(d=>matches(d,p.id,`legacy:${p.id}`))||null,stickyNotes:projectNotes(p).map(n=>({...n,recoveryDraft:drafts.find(d=>matches(d,p.id,n.id))||null}))}));
+      const orphaned=drafts.filter(d=>!s.projects.some(p=>p.id===d.id && projectNotes(p).some(n=>matches(d,p.id,n.id)))).map(d=>({projectId:d.id,name:"Recovered draft (project or note no longer listed)",savedNote:null,recoveryDraft:d,stickyNotes:[]}));
+      const blob=new Blob([JSON.stringify({format:"Tokly note backup",version:2,exportedAt:Math.floor(Date.now()/1000),notes:[...notes,...orphaned]},null,2)],{type:"application/json"});
       const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download="Tokly-notes.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return true as T;
     }
-    case "save_note":
-      s.projects = s.projects.map((p) =>
-        p.id === args.id ? { ...p, note: String(args.note) } : p,
-      );
+    case "save_note": {
+      const project=s.projects.find(p=>p.id===args.id);
+      const noteId=String(args.noteId || `legacy:${args.id}`);
+      const note=project && projectNotes(project).find(n=>n.id===noteId);
+      if(!project || !note)throw new Error("Note not found in this project.");
+      note.text=String(args.note);
+      if(project.activeNoteId===noteId)project.note=note.text;
       break;
+    }
+    case "add_note": {
+      const project=s.projects.find(p=>p.id===args.id);
+      if(!project)throw new Error("Project not found");
+      const notes=projectNotes(project);const position=notes.length;
+      if(position>=12)throw new Error("Each project supports up to 12 distinct-color notes.");
+      const note={id:`note:${project.id}:${position}`,text:"",color:position,position};
+      project.notes=[...notes,note];project.activeNoteId=note.id;project.note="";
+      break;
+    }
+    case "select_note": {
+      const project=s.projects.find(p=>p.id===args.id);
+      const note=project && projectNotes(project).find(n=>n.id===args.noteId);
+      if(!project || !note)throw new Error("This note does not belong to this project.");
+      project.activeNoteId=note.id;project.note=note.text;
+      break;
+    }
     case "exclude_project":
       s.projects = s.projects.map((p) =>
         p.id === args.id ? { ...p, excluded: Boolean(args.excluded) } : p,

@@ -31,6 +31,8 @@ pub struct Project {
     pub branch: String,
     pub changed_files: Vec<String>,
     pub note: String,
+    pub notes: Vec<notes::StickyNote>,
+    pub active_note_id: String,
     pub last_activity: Option<i64>,
     pub excluded: bool,
     pub available: bool,
@@ -147,6 +149,9 @@ impl Store {
         }
         db.execute_batch("CREATE TABLE IF NOT EXISTS active_commits(project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,sha TEXT NOT NULL,position INTEGER NOT NULL,PRIMARY KEY(project_id,sha));
             CREATE TABLE IF NOT EXISTS git_history(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,head_sha TEXT,shallow INTEGER NOT NULL,truncated INTEGER NOT NULL);").map_err(err)?;
+        db.execute_batch("CREATE TABLE IF NOT EXISTS project_notes(id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,text TEXT NOT NULL,color INTEGER NOT NULL,position INTEGER NOT NULL,UNIQUE(project_id,position));
+            CREATE TABLE IF NOT EXISTS selected_notes(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,note_id TEXT NOT NULL REFERENCES project_notes(id) ON DELETE CASCADE);
+            INSERT OR IGNORE INTO project_notes SELECT 'legacy:'||id,id,note,0,0 FROM projects;").map_err(err)?;
         Ok(Self {
             db,
             scans: vec![],
@@ -265,18 +270,7 @@ impl Store {
         Ok(())
     }
     pub fn save_note(&mut self, id: &str, note: &str) -> Result<()> {
-        if note.chars().count() > 2000 {
-            return Err("Keep notes under 2,000 characters.".into());
-        }
-        if self
-            .db
-            .execute("UPDATE projects SET note=? WHERE id=?", params![note, id])
-            .map_err(err)?
-            == 0
-        {
-            return Err("Project not found.".into());
-        }
-        Ok(())
+        self.save_sticky_note(id, &format!("legacy:{id}"), note)
     }
     pub fn exclude(&mut self, id: &str, value: bool) -> Result<()> {
         if self
@@ -314,7 +308,7 @@ impl Store {
     }
     pub fn snapshot(&self) -> Result<Snapshot> {
         let mut q=self.db.prepare("SELECT id,name,branch,changed,note,last_activity,excluded,available,pinned,last_commit FROM projects ORDER BY pinned DESC,last_activity DESC,name").map_err(err)?;
-        let projects = q
+        let mut projects = q
             .query_map([], |r| {
                 let changed: String = r.get(3)?;
                 Ok(Project {
@@ -323,6 +317,8 @@ impl Store {
                     branch: r.get(2)?,
                     changed_files: serde_json_compat::decode(&changed),
                     note: r.get(4)?,
+                    notes: vec![],
+                    active_note_id: String::new(),
                     last_activity: r.get(5)?,
                     excluded: r.get(6)?,
                     available: r.get(7)?,
@@ -333,6 +329,24 @@ impl Store {
             .map_err(err)?
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(err)?;
+        for project in &mut projects {
+            project.notes = self.project_notes(&project.id)?;
+            project.active_note_id = self
+                .db
+                .query_row(
+                    "SELECT note_id FROM selected_notes WHERE project_id=?",
+                    [&project.id],
+                    |r| r.get(0),
+                )
+                .unwrap_or_else(|_| format!("legacy:{}", project.id));
+            if let Some(note) = project
+                .notes
+                .iter()
+                .find(|n| n.id == project.active_note_id)
+            {
+                project.note = note.text.clone();
+            }
+        }
         let mut q=self.db.prepare("SELECT id,project_id,kind,label,timestamp FROM activity ORDER BY timestamp DESC,id DESC LIMIT 500").map_err(err)?;
         let activity = q
             .query_map([], |r| {
@@ -491,6 +505,7 @@ impl Store {
                 params![id, name],
             )
             .map_err(err)?;
+        self.db.execute("INSERT OR IGNORE INTO project_notes(id,project_id,text,color,position) SELECT 'legacy:'||id,id,note,0,0 FROM projects WHERE id=?", [&id]).map_err(err)?;
         let excluded: bool = self
             .db
             .query_row("SELECT excluded FROM projects WHERE id=?", [&id], |r| {
