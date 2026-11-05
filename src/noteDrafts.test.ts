@@ -28,3 +28,12 @@ it('explicitly discarded drafts are removed from recovery storage',()=>{
   const recovered=new NoteDrafts(disk,async()=>{},()=>{},async()=>{});
   expect(recovered.drafts.one).toBeUndefined();expect(recovered.drafts.two.text).toBe('Keep other project');
 });
+it('keeps multiple drafts in the same project separate and recovers legacy drafts',async()=>{
+  const disk=storage();const saved:unknown[]=[];const manager=new NoteDrafts(disk,async(id,text,noteId)=>{saved.push({id,text,noteId});},()=>{},async()=>{});
+  manager.update('p','Original recovery');manager.update('p','Second recovery','note:p:1');
+  const restored=new NoteDrafts(disk,async(id,text,noteId)=>{saved.push({id,text,noteId});},()=>{},async()=>{});
+  expect(Object.values(restored.drafts)).toHaveLength(2);
+  await Promise.all(Object.keys(restored.drafts).map(key=>restored.save(key)));
+  expect(saved).toContainEqual({id:'p',text:'Original recovery',noteId:undefined});
+  expect(saved).toContainEqual({id:'p',text:'Second recovery',noteId:'note:p:1'});
+});

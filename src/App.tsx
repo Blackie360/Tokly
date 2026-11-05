@@ -25,12 +25,14 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { NoteDrafts } from "./noteDrafts";
+import { NoteDrafts, noteDraftKey } from "./noteDrafts";
+import { NoteStackPicker, noteStackStyle } from "./NoteStackPicker";
 import { CommitGraph } from "./CommitGraph";
 import { EditorActions } from "./EditorActions";
 import { call, native, resetPreview, sample } from "./api";
 import {
   empty,
+  activeNote, projectNotes, noteColors,
   inPeriod,
   historyExplanation,
   selectedEditorName,
@@ -87,11 +89,11 @@ export default function App() {
       setLoading(false);
     }
   }, []);
-  const [drafts] = useState(() => new NoteDrafts(localStorage, async (id,text) => {await call("save_note", {id,note:text});snapshotRequest.current++;setData(previous=>({...previous,projects:previous.projects.map(p=>p.id===id?{...p,note:text}:p)}));}, () => setDraftVersion(v=>v+1), refresh));
+  const [drafts] = useState(() => new NoteDrafts(localStorage, async (id,text,noteId) => {await call("save_note", {id,note:text,noteId:noteId||null});snapshotRequest.current++;setData(previous=>({...previous,projects:previous.projects.map(p=>p.id===id?{...p,note:activeNote(p).id===(noteId||`legacy:${id}`)?text:p.note,notes:projectNotes(p).map(n=>n.id===(noteId||`legacy:${id}`)?{...n,text}:n)}:p)}));}, () => setDraftVersion(v=>v+1), refresh));
   useEffect(() => {
     const timer=setTimeout(() => {
-      for(const draft of Object.values(drafts.drafts)) {
-        if(data.projects.some(p=>p.id===draft.id) && !drafts.errors[draft.id]) void drafts.save(draft.id);
+      for(const [key,draft] of Object.entries(drafts.drafts)) {
+        if(data.projects.some(p=>p.id===draft.id) && !drafts.errors[key]) void drafts.save(key);
       }
     },700);
     return () => clearTimeout(timer);
@@ -133,9 +135,11 @@ export default function App() {
   useEffect(() => {
     if (current && current.id !== selected) setSelected(current.id);
   }, [current?.id, selected]);
-  const note = current ? drafts.drafts[current.id]?.text ?? current.note : "";
-  const noteDirty = Boolean(current && drafts.drafts[current.id]);
-  const noteStatus = current && drafts.errors[current.id] ? (drafts.storageError ? "Not saved — keep this window open. Retry or export a backup." : "Not saved — recovery draft kept. Retry saving or export a backup.") : current && drafts.isSaving(current.id) ? "Saving…" : noteDirty ? (drafts.storageError ? "Draft in memory · autosaving…" : "Recovery draft stored locally · autosaving…") : "Saved on this device";
+  const selectedNote=current ? activeNote(current) : undefined;
+  const selectedNoteKey=current ? noteDraftKey(current.id,selectedNote?.id) : "";
+  const note = current ? drafts.drafts[selectedNoteKey]?.text ?? selectedNote!.text : "";
+  const noteDirty = Boolean(current && drafts.drafts[selectedNoteKey]);
+  const noteStatus = current && drafts.errors[selectedNoteKey] ? (drafts.storageError ? "Not saved — keep this window open. Retry or export a backup." : "Not saved — recovery draft kept. Retry saving or export a backup.") : current && drafts.isSaving(selectedNoteKey) ? "Saving…" : noteDirty ? (drafts.storageError ? "Draft in memory · autosaving…" : "Recovery draft stored locally · autosaving…") : "Saved on this device";
   async function action(
     command: string,
     args: Record<string, unknown> = {},
@@ -147,7 +151,7 @@ export default function App() {
       const result = await call<unknown>(command, args);
       if(command === "remove_root") {
         const remaining=data.roots.filter(root=>root!==args.path);
-        for(const project of data.projects) if(!remaining.some(root=>project.id===root || project.id.startsWith(root+"/"))) drafts.discard(project.id);
+        for(const project of data.projects) if(!remaining.some(root=>project.id===root || project.id.startsWith(root+"/"))) drafts.discardProject(project.id);
       }
       if (command === "open_project") { if (typeof result === "string") setToast(result); void refreshEditors(); }
       await refresh();
@@ -444,7 +448,7 @@ export default function App() {
                             </span>
                             <ChevronRight className="row-arrow" size={17} />
                           </button>
-                          <p className="resume-note">{(drafts.drafts[p.id]?.text ?? p.note) || "No next step yet. Leave yourself a starting point."}</p>
+                          <p className="resume-note">{(drafts.drafts[noteDraftKey(p.id,activeNote(p).id)]?.text ?? p.note) || "No next step yet. Leave yourself a starting point."}</p>
                           <div className="resume-actions">
                             <EditorActions editors={editors} disabled={busy || !p.available} onOpen={editorId => void action("open_project", {id: p.id, editor: true, editorId})} />
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
@@ -472,7 +476,7 @@ export default function App() {
                         </button>
                       </div>
                     </section>
-                    <aside className="continue-panel">
+                    <aside className="continue-panel" style={current ? noteStackStyle(current) : undefined}>
                       <div className="bookmark-icon">
                         <Bookmark size={24} />
                       </div>
@@ -480,8 +484,10 @@ export default function App() {
                         Your next little win
                       </span>
                       <h2>{current?.name || "Your next project"}</h2>
+                      {current && <NoteStackPicker project={current} compact busy={busy} onSelect={noteId=>void action("select_note",{id:current.id,noteId})}/>}
+
                       <p tabIndex={0} aria-label="Saved next step">
-                        {(current && (drafts.drafts[current.id]?.text ?? current.note)) ||
+                        {(current && (drafts.drafts[selectedNoteKey]?.text ?? current.note)) ||
                           "Leave a next-step note so you know where to begin."}
                       </p>
                       {current && (
@@ -654,7 +660,11 @@ export default function App() {
                               )}
                             </>
                           ) : (
-                            <div className="note-editor">
+                            <div className="notes-workbench">
+                              <NoteStackPicker project={current} busy={busy} onSelect={noteId=>void action("select_note",{id:current.id,noteId})}/>
+                              <button className="button secondary" disabled={busy || projectNotes(current).length>=12} onClick={()=>void action("add_note",{id:current.id},"New note added")}>Add sticky note</button>
+                              <p className="small">Each project has its own stack, with up to 12 distinct-color notes. Select a note to bring it forward. Edits autosave.</p>
+                            <div className="note-editor colored-note-editor" style={{background:noteColors[selectedNote?.color || 0]?.value || noteColors[0].value}}>
                               <label htmlFor="next-step">
                                 Where will you pick up next?
                               </label>
@@ -663,23 +673,24 @@ export default function App() {
                                 value={note}
                                 maxLength={2000}
                                 onChange={(e) => {
-                                  drafts.update(current.id,e.target.value);
+                                  drafts.update(current.id,e.target.value,selectedNote?.id);
                                 }}
                                 placeholder="One small next step…"
                               />
                               <p className="small" role="status">{noteStatus}</p>
-                              {current && drafts.errors[current.id] && <p role="alert" className="small">{drafts.errors[current.id]}</p>}
+                              {current && drafts.errors[selectedNoteKey] && <p role="alert" className="small">{drafts.errors[selectedNoteKey]}</p>}
                               {drafts.storageError && <p role="alert" className="small">{drafts.storageError}</p>}
                               <div className="note-actions">
                                 <span>{note.length}/2000</span>
                                 <button
                                   className="button primary"
-                                  disabled={busy || !noteDirty || drafts.isSaving(current.id)}
-                                  onClick={() => void drafts.save(current.id)}
+                                  disabled={busy || !noteDirty || drafts.isSaving(selectedNoteKey)}
+                                  onClick={() => void drafts.save(selectedNoteKey)}
                                 >
                                   Save next step <Check size={16} />
                                 </button>
                               </div>
+                            </div>
                             </div>
                           )}
                         </div>

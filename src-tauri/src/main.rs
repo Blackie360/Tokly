@@ -96,9 +96,13 @@ async fn export_notes(drafts: Vec<tokly_tracker::notes::Draft>, s: State<'_, Sha
     }).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
-async fn save_note(id: String, note: String, s: State<'_, Shared>) -> Result<(), String> {
-    with_store(s.inner().clone(), move |s| s.save_note(&id, &note)).await
+async fn save_note(id: String, note: String, note_id: Option<String>, s: State<'_, Shared>) -> Result<(), String> {
+    with_store(s.inner().clone(), move |s| match note_id {Some(note_id)=>s.save_sticky_note(&id,&note_id,&note),None=>s.save_note(&id,&note)}).await
 }
+#[tauri::command]
+async fn add_note(id:String,s:State<'_,Shared>)->Result<String,String> {with_store(s.inner().clone(),move|s|s.add_note(&id)).await}
+#[tauri::command]
+async fn select_note(id:String,note_id:String,s:State<'_,Shared>)->Result<(),String> {with_store(s.inner().clone(),move|s|s.select_note(&id,&note_id)).await}
 #[tauri::command]
 async fn exclude_project(id: String, excluded: bool, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| s.exclude(&id, excluded)).await
@@ -236,6 +240,8 @@ fn main() {
             add_root,
             remove_root,
             save_note,
+            add_note,
+            select_note,
             export_notes,
             exclude_project,
             set_retention,
