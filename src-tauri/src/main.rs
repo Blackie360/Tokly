@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod editors;
+mod note_export;
 use std::{
     path::Path,
     sync::{Arc, Mutex},
@@ -85,6 +86,14 @@ async fn add_root(s: State<'_, Shared>) -> Result<bool, String> {
 #[tauri::command]
 async fn remove_root(path: String, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| s.remove_root(&path)).await
+}
+#[tauri::command]
+async fn export_notes(drafts: Vec<tokly_tracker::notes::Draft>, s: State<'_, Shared>) -> Result<bool,String> {
+    let backup=with_store(s.inner().clone(), move |s|s.notes_backup(drafts)).await?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(path)=rfd::FileDialog::new().set_title("Export Tokly notes — contains local paths and note text").set_file_name("Tokly-notes.json").add_filter("JSON backup", &["json"]).save_file() else {return Ok(false)};
+        note_export::write_atomic(&path,&backup)?;Ok(true)
+    }).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
 async fn save_note(id: String, note: String, s: State<'_, Shared>) -> Result<(), String> {
@@ -227,6 +236,7 @@ fn main() {
             add_root,
             remove_root,
             save_note,
+            export_notes,
             exclude_project,
             set_retention,
             set_history_days,

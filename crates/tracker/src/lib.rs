@@ -1,6 +1,7 @@
 //! Local-only tracking. File contents, diffs, credentials and remote URLs are never stored.
 pub mod graph;
 mod history;
+pub mod notes;
 use chrono::Utc;
 use git2::{Repository, StatusOptions};
 use notify::{RecursiveMode, Watcher};
