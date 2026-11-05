@@ -121,7 +121,7 @@ async fn rescan(s: State<'_, Shared>) -> Result<(), String> {
 }
 #[tauri::command]
 async fn installed_editors() -> Result<Vec<editors::Editor>, String> {
-    tauri::async_runtime::spawn_blocking(|| editors::installed_with(editors::resolve))
+    tauri::async_runtime::spawn_blocking(|| editors::installed_with(editors::resolve, editors::app_icon))
         .await
         .map_err(|e| e.to_string())
 }

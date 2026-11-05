@@ -1598,3 +1598,4 @@ select {
 .workspace-report { margin-bottom: 16px; }
 .discovery-report { padding: 0 12px 10px; font-size: 12px; overflow-wrap: anywhere; }
 .discovery-report summary { cursor: pointer; color: #c9b8f2; }
+.installed-editor-icon { display: block; width: 24px; height: 24px; object-fit: contain; }

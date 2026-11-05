@@ -1,10 +1,10 @@
+import { useState } from "react";
 import { Folder } from "lucide-react";
 import type { Editor } from "./model";
 
 function EditorIcon({ editor }: { editor: Editor }) {
-  if (editor.id.startsWith("com.microsoft.VSCode")) return <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="#38a9ed" d="m17 2 6 3v14l-6 3-10-8-4 3-3-2V9l3-2 4 3zm0 5-7 5 7 5zM3 10v4l2-2z"/></svg>;
-  if (editor.name === "Cursor") return <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="m4 2 17 10-8 2-4 8z"/><path fill="#8d83a5" d="m4 2 9 12-4 8z"/></svg>;
-  if (editor.name === "Zed") return <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeWidth="2" d="M4 5h16L4 19h16M4 10V5m16 14v-5"/></svg>;
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  if (editor.iconDataUrl?.startsWith("data:image/png;base64,") && failedSource !== editor.iconDataUrl) return <img src={editor.iconDataUrl} alt="" aria-hidden="true" className="installed-editor-icon" onError={() => setFailedSource(editor.iconDataUrl || null)}/>;
   return <span aria-hidden="true" className="editor-monogram">{editor.name.split(" ").map(word => word[0]).join("").slice(0, 2)}</span>;
 }
 
