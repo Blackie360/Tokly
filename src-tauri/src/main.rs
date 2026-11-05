@@ -78,6 +78,10 @@ async fn exclude_project(id: String, excluded: bool, s: State<'_, Shared>) -> Re
     with_store(s.inner().clone(), move |s| s.exclude(&id, excluded)).await
 }
 #[tauri::command]
+async fn pin_project(id: String, pinned: bool, s: State<'_, Shared>) -> Result<(), String> {
+    with_store(s.inner().clone(), move |s| s.pin_project(&id, pinned)).await
+}
+#[tauri::command]
 async fn set_retention(days: i64, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| s.set_retention(days)).await
 }
@@ -179,6 +183,7 @@ fn main() {
             save_note,
             exclude_project,
             set_retention,
+            pin_project,
             rescan,
             open_project
         ])

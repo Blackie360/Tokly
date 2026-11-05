@@ -1542,3 +1542,10 @@ select {
     scroll-behavior: auto !important;
   }
 }
+
+.resume-card { border: 1px solid #454e69; border-radius: 12px; overflow: hidden; min-width: 0; }
+.resume-card .project-row { border: 0; border-radius: 0; }
+.resume-note { color: var(--peach); padding: 0 18px; margin: 4px 0 14px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.resume-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 0 18px 16px; }
+.resume-actions .icon-button { margin-left: auto; }
+.resume-actions [aria-pressed="true"] { color: var(--lilac); background: #343049; }

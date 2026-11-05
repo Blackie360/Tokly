@@ -7,6 +7,7 @@ export interface Project {
   lastActivity: number | null;
   excluded: boolean;
   available: boolean;
+  pinned: boolean;
 }
 export interface Activity {
   id: number;

@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 test("navigation, project search and weekly summary", async ({ page }) => {
   await expect(
-    page.getByRole("heading", { name: "Back to your projects" }),
+    page.getByRole("heading", { name: "Continue working" }),
   ).toBeVisible();
   await page.getByRole("textbox", { name: "Find a project" }).fill("Piko");
   await expect(
@@ -31,7 +31,7 @@ test("next-step notes persist after reload", async ({ page }) => {
   await page.getByRole("button", { name: "Save next step" }).click();
   await expect(page.getByRole("status")).toContainText("Next step saved");
   await page.reload();
-  await expect(page.getByText("Ship the detector evaluation")).toBeVisible();
+  await expect(page.getByText("Ship the detector evaluation").first()).toBeVisible();
 });
 test("exclusion persists and can be restored", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -44,7 +44,7 @@ test("exclusion persists and can be restored", async ({ page }) => {
   ).toHaveCount(0);
 });
 test("native-only actions explain preview limitations", async ({ page }) => {
-  await page.getByRole("button", { name: "Open in Cursor" }).click();
+  await page.getByRole("button", { name: "Open in Cursor" }).first().click();
   await expect(page.getByRole("alert")).toContainText(
     "available in the desktop app",
   );
@@ -87,4 +87,18 @@ test("background refresh preserves the default project's unsaved note", async ({
   await page.getByRole("button", { name: "Save next step" }).click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("tokly-preview-v1")!).projects.find((p: {name: string}) => p.name === "Care Clarity").note);
   expect(saved).toBe("Keep this draft during activity elsewhere");
+});
+
+test("continue cards show context and pins survive relaunch", async ({ page }) => {
+  const card = page.getByRole("article", {name: "Continue Piko Pi Agent", exact: true});
+  await expect(card).toContainText("Test the WhatsApp task interruption flow.");
+  await expect(card).toContainText("feat/streaming");
+  await expect(card).toContainText("1 changed files");
+  await card.getByRole("button", {name: "Pin Piko Pi Agent", exact: true}).click();
+  await page.reload();
+  await expect(page.getByRole("article").first()).toHaveAttribute("aria-label", "Continue Piko Pi Agent");
+  await expect(page.getByRole("button", {name: "Unpin Piko Pi Agent"})).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", {name: "Unpin Piko Pi Agent"}).click();
+  await page.reload();
+  await expect(page.getByRole("button", {name: "Pin Piko Pi Agent", exact: true})).toBeVisible();
 });

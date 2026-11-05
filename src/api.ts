@@ -39,6 +39,9 @@ export async function call<T = void>(
         p.id === args.id ? { ...p, excluded: Boolean(args.excluded) } : p,
       );
       break;
+    case "pin_project":
+      s.projects = s.projects.map((p) => p.id === args.id ? {...p, pinned: Boolean(args.pinned)} : p);
+      break;
     case "set_retention":
       s.retentionDays = Number(args.days);
       break;
@@ -96,6 +99,7 @@ export function sample() {
     lastActivity: time - [720, 3600, 10800, 86400][i],
     excluded: false,
     available: true,
+    pinned: false,
   }));
   const labels = [
     "ml/terms.csv",
