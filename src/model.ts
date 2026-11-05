@@ -26,7 +26,6 @@ export interface Snapshot {
   projects: Project[];
   activity: Activity[];
   commits: Commit[];
-  paused: boolean;
   retentionDays: number;
   lastScan: number | null;
   warnings: string[];
@@ -36,7 +35,6 @@ export const empty: Snapshot = {
   projects: [],
   activity: [],
   commits: [],
-  paused: false,
   retentionDays: 90,
   lastScan: null,
   warnings: [],

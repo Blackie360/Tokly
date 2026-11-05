@@ -33,14 +33,8 @@ test("next-step notes persist after reload", async ({ page }) => {
   await page.reload();
   await expect(page.getByText("Ship the detector evaluation")).toBeVisible();
 });
-test("pause and exclusion persist and can be restored", async ({ page }) => {
+test("exclusion persists and can be restored", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("switch", { name: "Background tracking" }).click();
-  await page.reload();
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(
-    page.getByRole("switch", { name: "Background tracking" }),
-  ).not.toBeChecked();
   await page.getByRole("button", { name: /Projects 4/ }).click();
   await page.getByRole("button", { name: "Exclude from tracking" }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -68,4 +62,29 @@ test("compact viewport has no horizontal overflow", async ({ page }) => {
       ),
     ).toBe(true);
   }
+});
+
+test("onboarding and relaunch have no pause controls", async ({ page }) => {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await expect(page.getByRole("button", { name: /Pause tracking|Resume tracking/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(page.getByRole("switch", { name: "Background tracking" })).toHaveCount(0);
+    await expect(page.getByText(/Your approved folders are monitored automatically/)).toBeVisible();
+    await page.reload();
+  }
+});
+test("background refresh preserves the default project's unsaved note", async ({ page }) => {
+  await page.getByRole("button", { name: /Edit next step/ }).click();
+  const editor = page.getByRole("textbox", { name: "Where will you pick up next?" });
+  await editor.fill("Keep this draft during activity elsewhere");
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    state.projects.reverse();
+    localStorage.setItem("tokly-preview-v1", JSON.stringify(state));
+  });
+  await page.getByRole("button", { name: "Refresh Git status" }).click();
+  await expect(editor).toHaveValue("Keep this draft during activity elsewhere");
+  await page.getByRole("button", { name: "Save next step" }).click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("tokly-preview-v1")!).projects.find((p: {name: string}) => p.name === "Care Clarity").note);
+  expect(saved).toBe("Keep this draft during activity elsewhere");
 });

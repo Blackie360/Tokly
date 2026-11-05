@@ -16,8 +16,6 @@ import {
   GitCommitHorizontal,
   LayoutDashboard,
   LoaderCircle,
-  Pause,
-  Play,
   Plus,
   RefreshCw,
   Search,
@@ -103,6 +101,9 @@ export default function App() {
   const current =
     projects.find((p) => p.id === selected) || visible[0] || projects[0];
   useEffect(() => {
+    if (current && current.id !== selected) setSelected(current.id);
+  }, [current?.id, selected]);
+  useEffect(() => {
     setNote(current?.note || "");
     setNoteDirty(false);
   }, [current?.id, current?.note]);
@@ -185,22 +186,6 @@ export default function App() {
               <p>Your activity stays on this Mac.</p>
             </div>
           </div>
-          <button
-            className="tracking-status"
-            onClick={() => void action("set_paused", { paused: !data.paused })}
-            disabled={busy}
-            aria-label={data.paused ? "Resume tracking" : "Pause tracking"}
-          >
-            <span className={`status-dot ${data.paused ? "paused" : ""}`} />
-            <span>
-              {!native
-                ? "Sample preview"
-                : data.paused
-                  ? "Tracking paused"
-                  : "Tracking enabled"}
-            </span>
-            {data.paused ? <Play size={13} /> : <Pause size={13} />}
-          </button>
           <div className="version">
             Tokly for macOS <span>v0.1.0</span>
           </div>
@@ -222,7 +207,7 @@ export default function App() {
               className="icon-button"
               title="Refresh Git status"
               aria-label="Refresh Git status"
-              disabled={busy || data.paused}
+              disabled={busy}
               onClick={() => void action("rescan", {}, "Git status refreshed")}
             >
               <RefreshCw size={17} className={busy ? "spinning" : ""} />
@@ -944,28 +929,11 @@ export default function App() {
                       <div>
                         <h2>Quietly in the background</h2>
                         <p>
-                          Close the window and keep building. Quit Tokly to stop
-                          tracking.
+                          Your approved folders are monitored automatically while
+                          Tokly is running, even with this window closed. Quit
+                          Tokly to stop tracking.
                         </p>
                       </div>
-                    </div>
-                    <div className="setting-row">
-                      <div>
-                        <strong>Background tracking</strong>
-                        <p>Watch only your approved folders.</p>
-                      </div>
-                      <button
-                        className={`toggle ${!data.paused ? "on" : ""}`}
-                        role="switch"
-                        aria-checked={!data.paused}
-                        aria-label="Background tracking"
-                        disabled={busy}
-                        onClick={() =>
-                          void action("set_paused", { paused: !data.paused })
-                        }
-                      >
-                        <span />
-                      </button>
                     </div>
                     <div className="setting-row">
                       <div>

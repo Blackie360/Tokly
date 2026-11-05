@@ -39,9 +39,6 @@ export async function call<T = void>(
         p.id === args.id ? { ...p, excluded: Boolean(args.excluded) } : p,
       );
       break;
-    case "set_paused":
-      s.paused = Boolean(args.paused);
-      break;
     case "set_retention":
       s.retentionDays = Number(args.days);
       break;

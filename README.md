@@ -24,7 +24,7 @@ Use **Open in Cursor** for the selected project or **Open folder** for Finder. C
 - Branch, working-tree changes, recent commits, and disconnected-folder status.
 - Per-project next-step notes with explicit Save and local persistence.
 - Overview, project Activity / Changes / Notes, weekly progress, and Settings.
-- Menu bar access, pause/resume, close-to-background, and opt-in login startup.
+- Automatic monitoring after folder approval, menu bar access, close-to-background, and opt-in login startup.
 - Configurable 7 / 30 / 90 / 365-day activity retention.
 - Midnight + Lilac interface with peach notes, mint status, keyboard focus and reduced-motion support.
 
@@ -34,7 +34,7 @@ Only approved parent folders are scanned; directory symlinks are not followed. D
 
 The first scan imports commits from the current branch over the last seven days, from all authors; these are repository activity, not a measure of your personal productivity. Imported commits are deduplicated by repository and SHA and then retained for your selected duration. History follows the currently checked-out branch when scanning; previously collected commits remain until retention expires. A scan is capped at 10,000 commits. File activity shown in the interface and weekly chart is limited to the latest 500 retained file events. Neither edit counts nor commits represent completed tasks or hours worked.
 
-The watcher batches saves with a two-second quiet period. It reconciles discovery and Git state every minute and after observed changes. On wake, reconciliation resumes; after downtime, current Git state can be recovered but missing edit events cannot. A bounded notification queue protects memory; overflow can lose edit history but the next scan repairs current Git state. Workspace scanning currently holds the database lock, so very large workspaces may delay snapshots. Keep roots focused on development workspaces. Pause drops pending events; resuming rescans current Git state and can import commits made while paused. Exclusion stops future collection but keeps existing records and notes locally; removing the last approving workspace deletes the affected project records and notes.
+The watcher batches saves with a two-second quiet period. It reconciles discovery and Git state every minute and after observed changes. On wake, reconciliation resumes; after downtime, current Git state can be recovered but missing edit events cannot. A bounded notification queue protects memory; overflow can lose edit history but the next scan repairs current Git state. Workspace scanning currently holds the database lock, so very large workspaces may delay snapshots. Keep roots focused on development workspaces. Monitoring starts automatically for approved folders whenever Tokly runs, including after relaunch. Quit Tokly to stop monitoring; launch at login remains opt-in. Exclusion stops future collection but keeps existing records and notes locally; removing the last approving workspace deletes the affected project records and notes.
 
 ## Browser preview
 

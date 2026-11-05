@@ -78,10 +78,6 @@ async fn exclude_project(id: String, excluded: bool, s: State<'_, Shared>) -> Re
     with_store(s.inner().clone(), move |s| s.exclude(&id, excluded)).await
 }
 #[tauri::command]
-async fn set_paused(paused: bool, s: State<'_, Shared>) -> Result<(), String> {
-    with_store(s.inner().clone(), move |s| s.set_paused(paused)).await
-}
-#[tauri::command]
 async fn set_retention(days: i64, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| s.set_retention(days)).await
 }
@@ -155,26 +151,14 @@ fn main() {
             app.manage(tokly_tracker::start(shared.clone()));
             app.manage(shared);
             let open = MenuItem::with_id(app, "open", "Open Tokly", true, None::<&str>)?;
-            let pause =
-                MenuItem::with_id(app, "pause", "Pause / resume tracking", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Tokly", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &pause, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &quit])?;
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().expect("Bundled app icon").clone())
                 .tooltip("Tokly — local project tracking")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show(app),
-                    "pause" => {
-                        let shared = app.state::<Shared>().inner().clone();
-                        tauri::async_runtime::spawn(async move {
-                            let _ = with_store(shared, |s| {
-                                let next = !s.paused();
-                                s.set_paused(next)
-                            })
-                            .await;
-                        });
-                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -194,7 +178,6 @@ fn main() {
             remove_root,
             save_note,
             exclude_project,
-            set_paused,
             set_retention,
             rescan,
             open_project

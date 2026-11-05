@@ -208,18 +208,6 @@ svg {
   color: var(--muted);
   margin-top: 4px;
 }
-.tracking-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #ccd3e7;
-  width: 100%;
-  padding: 9px 11px;
-}
-.tracking-status svg {
-  margin-left: auto;
-}
 .status-dot {
   display: inline-block;
   width: 6px;
@@ -227,9 +215,6 @@ svg {
   border-radius: 50%;
   background: var(--mint);
   flex-shrink: 0;
-}
-.status-dot.paused {
-  background: var(--peach);
 }
 .version {
   color: #8893ae;

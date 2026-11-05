@@ -56,7 +56,6 @@ pub struct Snapshot {
     pub projects: Vec<Project>,
     pub activity: Vec<Activity>,
     pub commits: Vec<Commit>,
-    pub paused: bool,
     pub retention_days: i64,
     pub last_scan: Option<i64>,
     pub warnings: Vec<String>,
@@ -75,7 +74,8 @@ impl Store {
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
   CREATE TABLE IF NOT EXISTS roots(path TEXT PRIMARY KEY);
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
-  INSERT OR IGNORE INTO settings VALUES('paused','false'),('retention','90');
+  INSERT OR IGNORE INTO settings VALUES('retention','90');
+  DELETE FROM settings WHERE key='paused';
   CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,name TEXT NOT NULL,branch TEXT NOT NULL DEFAULT '',changed TEXT NOT NULL DEFAULT '[]',note TEXT NOT NULL DEFAULT '',last_activity INTEGER,excluded INTEGER NOT NULL DEFAULT 0,available INTEGER NOT NULL DEFAULT 1);
   CREATE TABLE IF NOT EXISTS activity(id INTEGER PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,kind TEXT NOT NULL,label TEXT NOT NULL,timestamp INTEGER NOT NULL);
   CREATE INDEX IF NOT EXISTS activity_time ON activity(timestamp);
@@ -128,23 +128,6 @@ impl Store {
                     .map_err(err)?;
             }
         }
-        Ok(())
-    }
-    pub fn paused(&self) -> bool {
-        self.db
-            .query_row("SELECT value FROM settings WHERE key='paused'", [], |r| {
-                r.get::<_, String>(0)
-            })
-            .unwrap_or_default()
-            == "true"
-    }
-    pub fn set_paused(&mut self, value: bool) -> Result<()> {
-        self.db
-            .execute(
-                "UPDATE settings SET value=? WHERE key='paused'",
-                [value.to_string()],
-            )
-            .map_err(err)?;
         Ok(())
     }
     pub fn retention(&self) -> i64 {
@@ -265,7 +248,6 @@ impl Store {
             projects,
             activity,
             commits,
-            paused: self.paused(),
             retention_days: self.retention(),
             last_scan: self.last_scan,
             warnings: self.warnings.clone(),
@@ -273,9 +255,6 @@ impl Store {
     }
     pub fn reconcile(&mut self) -> Result<()> {
         self.warnings.clear();
-        if self.paused() {
-            return Ok(());
-        }
         for root in self.roots()? {
             if !Path::new(&root).is_dir() {
                 self.warnings.push(format!("Folder unavailable: {root}"));
@@ -400,9 +379,6 @@ impl Store {
         Ok(())
     }
     pub fn record_paths(&mut self, paths: impl IntoIterator<Item = PathBuf>) -> Result<()> {
-        if self.paused() {
-            return Ok(());
-        }
         let mut projects = self.snapshot()?.projects;
         projects.sort_by_key(|p| std::cmp::Reverse(p.id.len()));
         let mut unique = HashSet::new();
@@ -528,15 +504,12 @@ pub fn start(store: Arc<Mutex<Store>>) -> Tracker {
             let Ok(mut s) = store.lock() else {
                 break;
             };
-            let desired: HashSet<String> = if s.paused() {
-                HashSet::new()
-            } else {
-                s.roots()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|p| Path::new(p).is_dir())
-                    .collect()
-            };
+            let desired: HashSet<String> = s
+                .roots()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|p| Path::new(p).is_dir())
+                .collect();
             if desired != requested
                 || (desired != watched && watch_attempt.elapsed() >= Duration::from_secs(60))
             {
@@ -561,10 +534,6 @@ pub fn start(store: Arc<Mutex<Store>>) -> Tracker {
                 watch_attempt = Instant::now();
                 scan = Instant::now() - Duration::from_secs(60);
                 pending.clear();
-            }
-            if s.paused() {
-                pending.clear();
-                continue;
             }
             let ready: Vec<PathBuf> = pending
                 .iter()
@@ -655,7 +624,7 @@ mod tests {
             .contains("secret content"));
     }
     #[test]
-    fn pause_exclusion_and_noise_do_not_record_activity() {
+    fn exclusion_and_noise_do_not_record_activity() {
         let (t, mut s, p) = fixture();
         s.add_root(t.path()).unwrap();
         s.reconcile().unwrap();
@@ -666,9 +635,6 @@ mod tests {
         ])
         .unwrap();
         assert!(s.snapshot().unwrap().activity.is_empty());
-        s.set_paused(true).unwrap();
-        s.record_paths(vec![p.join("a.rs")]).unwrap();
-        s.set_paused(false).unwrap();
         s.exclude(p.to_str().unwrap(), true).unwrap();
         s.reconcile().unwrap();
         s.record_paths(vec![p.join("a.rs")]).unwrap();
@@ -733,12 +699,27 @@ mod tests {
     }
     #[test]
     fn real_watcher_records_a_file_change() {
-        let (temp, mut s, p) = fixture();
-        s.add_root(temp.path()).unwrap();
+        let (temp, s, p) = fixture();
+        // Start before onboarding: no roots means no project monitoring.
         let shared = Arc::new(Mutex::new(s));
         let _worker = start(shared.clone());
+        assert!(shared
+            .lock()
+            .unwrap()
+            .snapshot()
+            .unwrap()
+            .projects
+            .is_empty());
+        shared.lock().unwrap().add_root(temp.path()).unwrap();
         let deadline = Instant::now() + Duration::from_secs(10);
-        while shared.lock().unwrap().last_scan.is_none() {
+        while shared
+            .lock()
+            .unwrap()
+            .snapshot()
+            .unwrap()
+            .projects
+            .is_empty()
+        {
             assert!(Instant::now() < deadline);
             thread::sleep(Duration::from_millis(100));
         }
@@ -771,11 +752,33 @@ mod tests {
         persisted
             .save_note(p.to_str().unwrap(), "Pick up here")
             .unwrap();
-        persisted.set_paused(true).unwrap();
+        persisted
+            .db
+            .execute("INSERT INTO settings VALUES('paused','true')", [])
+            .unwrap();
         persisted.set_retention(30).unwrap();
         drop(persisted);
-        let restored = Store::open(&db).unwrap().snapshot().unwrap();
-        assert!(restored.paused);
+        let mut reopened = Store::open(&db).unwrap();
+        reopened.reconcile().unwrap();
+        reopened
+            .record_paths(vec![p.join("after-relaunch.rs")])
+            .unwrap();
+        let restored = reopened.snapshot().unwrap();
+        assert!(restored
+            .activity
+            .iter()
+            .any(|a| a.label == "after-relaunch.rs"));
+        assert_eq!(
+            reopened
+                .db
+                .query_row(
+                    "SELECT COUNT(*) FROM settings WHERE key='paused'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            0
+        );
         assert_eq!(restored.retention_days, 30);
         assert_eq!(restored.projects[0].note, "Pick up here");
         assert_eq!(restored.roots.len(), 1);
