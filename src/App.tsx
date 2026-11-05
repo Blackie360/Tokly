@@ -26,6 +26,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { EditorActions } from "./EditorActions";
 import { call, native, resetPreview, sample } from "./api";
 import {
   empty,
@@ -430,7 +431,7 @@ export default function App() {
                           </button>
                           <p className="resume-note">{p.note || "No next step yet. Leave yourself a starting point."}</p>
                           <div className="resume-actions">
-                            <button className="button secondary" disabled={busy || !p.available} onClick={() => void action("open_project", {id: p.id, editor: true})}>Open in {editorName} <ExternalLink size={14}/></button>
+                            <EditorActions editors={editors} disabled={busy || !p.available} onOpen={editorId => void action("open_project", {id: p.id, editor: true, editorId})} />
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
                             <button className="icon-button" aria-label={`${p.pinned ? "Unpin" : "Pin"} ${p.name}`} aria-pressed={Boolean(p.pinned)} disabled={busy} onClick={() => void action("pin_project", {id: p.id, pinned: !p.pinned})}><Pin size={16}/></button>
                           </div>
@@ -560,19 +561,7 @@ export default function App() {
                             <GitBranch size={15} />
                             {current.branch}
                           </span>
-                          <button className="text-button" disabled={busy || !current.available} onClick={() => void action("open_project", {id: current.id, editor: true})}>Open in {editorName} <ExternalLink size={14}/></button>
-                          <button
-                            className="text-button"
-                            disabled={busy || !current.available}
-                            onClick={() =>
-                              void action("open_project", {
-                                id: current.id,
-                                editor: false,
-                              })
-                            }
-                          >
-                            Open folder <ExternalLink size={14} />
-                          </button>
+                          <EditorActions editors={editors} disabled={busy || !current.available} onOpen={editorId => void action("open_project", {id: current.id, editor: true, editorId})} />
                         </div>
                         <div className="tabs" role="tablist">
                           {["Activity", "Changes", "Notes"].map((t) => (

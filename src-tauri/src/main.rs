@@ -108,7 +108,7 @@ async fn set_preferred_editor(editor: String, s: State<'_, Shared>) -> Result<()
         .and_then(|editor| locked(s.inner())?.set_preferred_editor(&editor))
 }
 #[tauri::command]
-async fn open_project(id: String, editor: bool, s: State<'_, Shared>) -> Result<String, String> {
+async fn open_project(id: String, editor: bool, editor_id: Option<String>, s: State<'_, Shared>) -> Result<String, String> {
     let preferred = with_store(s.inner().clone(), move |s| {
         if !s
             .snapshot()?
@@ -122,7 +122,7 @@ async fn open_project(id: String, editor: bool, s: State<'_, Shared>) -> Result<
         Ok((
             id,
             if editor {
-                s.preferred_editor()
+                editor_id.unwrap_or_else(|| s.preferred_editor())
             } else {
                 "finder".into()
             },
