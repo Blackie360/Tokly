@@ -18,16 +18,16 @@ for(const [,target] of html.matchAll(/(?:src|href)="([^"#][^"]*)"/g)){
   assert(existsSync(file),`Missing local asset: ${target}`);
 }
 assert(html.includes('https://tokly.blackielabs.com/'),'Missing canonical website URL');
-assert(html.includes('Interactive example'),'Demo data must be identified');
-assert(html.includes('unsigned and not notarized'),'Unsigned release warning must remain');
+assert(html.includes('INTERACTIVE EXAMPLE'),'Demo data must be identified');
+assert(html.includes('Unsigned and not notarized'),'Unsigned release warning must remain');
 assert(css.includes('prefers-reduced-motion'),'Missing reduced-motion support');
 assert(css.includes(':focus-visible'),'Missing keyboard focus styles');
 assert(html.includes('role="tablist"')&&html.includes('role="tabpanel"'),'Missing accessible demo tabs');
 execFileSync(process.execPath,['--check',join(publicRoot,'script.js')],{stdio:'inherit'});
 execFileSync(process.execPath,[join(root,'test-interactions.mjs')],{stdio:'inherit'});
 assert(html.includes('There is no public installer yet.'),'Private release limitation must remain');
-assert(html.includes('Homebrew') && html.includes('Not available yet.'),'Homebrew availability must remain honest');
-assert(html.includes('Fictional projects. No access to your files.'),'Preview limitations must remain explicit');
+assert(html.includes('Homebrew') && html.includes('Homebrew: not available yet.'),'Homebrew availability must remain honest');
+assert(html.includes('Fictional demo. No file access. Nothing saved.'),'Preview limitations must remain explicit');
 assert(!/\b(?:fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage)\b/.test(js),'Demo must not add networking or storage');
 const publicFiles=readdirSync(publicRoot,{recursive:true}).filter(path=>/\.(html|css|js|svg)$/.test(path));
 const totalBytes=publicFiles.reduce((sum,path)=>sum+readFileSync(join(publicRoot,path)).length,0);

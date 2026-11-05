@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-// Dependency-free behavior regression tests. These deliberately model only the
-// DOM APIs used by script.js; browser tests remain necessary for layout, native
-// keyboard activation, accessibility-tree output, and actual focus rendering.
+// Dependency-free behavior checks against shipped markup and JavaScript.
+// The fake deliberately implements only APIs script.js uses. Browser checks
+// are still needed for layout, native range keys and accessibility-tree output.
 const html = readFileSync(new URL('public/index.html', import.meta.url), 'utf8');
 const script = readFileSync(new URL('public/script.js', import.meta.url), 'utf8');
 let activeElement = null;
@@ -16,17 +16,18 @@ class Element {
     this.dataset = attributes['data-project'] ? { project: attributes['data-project'] } : {};
     this.disabled = Object.hasOwn(attributes, 'disabled');
     this.hidden = Object.hasOwn(attributes, 'hidden');
+    this.inert = Object.hasOwn(attributes, 'inert');
     this.tabIndex = Number(attributes.tabindex ?? (tag === 'button' ? 0 : -1));
     this.value = attributes.value;
     this.textContent = '';
     this.children = [];
     this.listeners = new Map();
+    const styles = new Map();
+    this.style = { setProperty: (name, value) => styles.set(name, String(value)), getPropertyValue: name => styles.get(name) || '' };
     const classes = new Set((attributes.class || '').split(/\s+/).filter(Boolean));
     this.classList = {
-      add: value => classes.add(value),
-      remove: value => classes.delete(value),
       contains: value => classes.has(value),
-      toggle: (value, force) => {
+      toggle(value, force) {
         const enabled = force ?? !classes.has(value);
         enabled ? classes.add(value) : classes.delete(value);
         return enabled;
@@ -48,13 +49,10 @@ class Element {
   focus() { activeElement = this; }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
-  querySelector(selector) {
-    assert.equal(selector, 'span', 'Extend the fake explicitly for new DOM APIs');
-    return this.children.find(child => child.tagName === 'SPAN') || null;
-  }
+  getBoundingClientRect() { return { left: 10, top: 20, width: 400, height: 200 }; }
 }
-// Read real element attributes from the shipped HTML so initial hidden,
-// disabled, ARIA, and data-project state cannot silently drift from tests.
+// Derive initial attributes from the real page rather than hardcoding the
+// disabled, hidden, selected or tab-order states under test.
 const nodes = [...html.matchAll(/<([a-z][\w-]*)\b([^>]*)>/gi)].map(([, tag, raw]) => {
   const attributes = {};
   for (const [, name, quoted, single, bare] of raw.matchAll(/([^\s=\/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
@@ -66,36 +64,33 @@ const ids = new Map(nodes.filter(node => node.id).map(node => [node.id, node]));
 const get = id => { assert(ids.has(id), `Missing shipped HTML element #${id}`); return ids.get(id); };
 const tabs = nodes.filter(node => node.dataset.project);
 const radios = nodes.filter(node => node.tagName === 'INPUT' && node.attributes.name === 'chip');
-const tablist = nodes.find(node => node.attributes.role === 'tablist');
-const controls = [...tabs, get('pin-button'), get('continue-button'), get('reset-demo'), ...radios];
-get('pin-button').append(new Element('span'));
+const artifacts = nodes.filter(node => node.classList.contains('artifact'));
+const range = get('thread-range');
+const scene = get('desk-scene');
+const controls = [...tabs, range, get('restore-button'), get('continue-button'), ...radios];
 assert.equal(tabs.length, 3);
 assert.equal(radios.length, 2);
+assert.equal(artifacts.length, 3);
 for (const control of controls) assert.equal(control.disabled, true, `${control.id || control.value} must default disabled without JS`);
-assert.equal(get('return-result').hidden, true);
+assert.equal(get('return-ticket').hidden, true);
+assert.equal(get('continue-result').hidden, true);
+assert.equal(range.value, '0');
+assert.equal(get('continue-button').getAttribute('aria-expanded'), 'false');
 const mediaListeners = [];
 const media = { matches: false, addEventListener(type, fn) { assert.equal(type, 'change'); mediaListeners.push(fn); } };
 const document = {
   getElementById: get,
   createElement: tag => new Element(tag),
-  querySelector(selector) { assert.equal(selector, '[role="tablist"]'); return tablist; },
   querySelectorAll(selector) {
     if (selector === '[data-project]') return tabs;
     if (selector === 'input[name="chip"]') return radios;
-    if (selector === '[data-project], #pin-button, #continue-button, #reset-demo, input[name="chip"]') return controls;
+    if (selector === '.artifact') return artifacts;
+    if (selector === '[data-project], #thread-range, #restore-button, #continue-button, input[name="chip"]') return controls;
     throw new Error(`Unsupported selector: ${selector}`);
   }
 };
-vm.runInNewContext(script, { document, window: { matchMedia(query) { assert.equal(query, '(max-width: 560px)'); return media; } } }, { filename: 'public/script.js' });
+vm.runInNewContext(script, { document, window: { matchMedia(query) { assert.equal(query, '(prefers-reduced-motion: reduce)'); return media; } } }, { filename: 'public/script.js' });
 for (const control of controls) assert.equal(control.disabled, false);
-assert.equal(tablist.getAttribute('aria-orientation'), 'horizontal');
-media.matches = true;
-mediaListeners.forEach(fn => fn());
-assert.equal(tablist.getAttribute('aria-orientation'), 'vertical');
-media.matches = false;
-mediaListeners.forEach(fn => fn());
-assert.equal(tablist.getAttribute('aria-orientation'), 'horizontal');
-
 const selected = key => {
   for (const tab of tabs) {
     assert.equal(tab.getAttribute('aria-selected'), String(tab.dataset.project === key));
@@ -104,74 +99,128 @@ const selected = key => {
   assert.equal(get('project-panel').getAttribute('aria-labelledby'), `tab-${key}`);
 };
 const clickTab = key => { get(`tab-${key}`).click(); selected(key); };
+selected('studio');
 clickTab('orbit');
-assert.equal(get('project-name').textContent, 'Orbit');
-assert.equal(get('project-branch').textContent, 'main');
-assert.equal(get('project-changes').textContent, 'Working tree clean');
+assert.equal(get('branch-name').textContent, 'main');
+assert.equal(get('branch-project').textContent, 'Orbit / your local project');
+assert.equal(get('change-count').textContent, 'Working tree clean');
 assert.equal(get('changed-files').children.length, 1);
-assert.equal(get('changed-files').children[0].className, 'clean-state');
-assert.match(get('changed-files').children[0].textContent, /All changes committed/);
-assert.match(get('demo-status').textContent, /Orbit example selected.*Next step:/);
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'false');
-get('pin-button').click();
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'true');
-assert.equal(get('pin-button').getAttribute('aria-label'), 'Unpin Orbit in this demo');
-assert(get('pin-button').classList.contains('is-pinned'));
-assert.match(get('demo-status').textContent, /Orbit pinned.*example only/);
+assert.equal(get('changed-files').children[0].textContent, 'All changes committed.');
+assert.equal(get('recent-commit').textContent, 'Make the planets responsive');
+assert.equal(get('project-note').textContent, 'Slow the orbit down.');
+assert.equal(get('ticket-project').textContent, 'Orbit.');
+assert.equal(get('ticket-branch').textContent, 'main · Working tree clean');
+assert.equal(get('ticket-note').textContent, get('project-note').textContent);
+assert.match(get('demo-status').textContent, /Orbit example selected/);
 clickTab('notes');
-assert.equal(get('project-name').textContent, 'Fieldnotes');
-assert.equal(get('project-changes').textContent, '2 changed files');
-assert.deepEqual(get('changed-files').children.map(row => row.children.map(child => child.textContent)), [['journal.css', 'Modified'], ['first-entry.md', 'Added']]);
-assert.equal(get('commit-one').textContent, 'Create the journal layout');
-assert.equal(get('commit-two').textContent, 'Refine the type scale');
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'false');
-clickTab('orbit');
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'true', 'Pin state persists per project');
-get('pin-button').click();
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'false');
-assert(!get('pin-button').classList.contains('is-pinned'));
-assert.equal(get('pin-button').querySelector('span').textContent, 'Pin project');
+assert.equal(get('branch-name').textContent, 'feat/journal');
+assert.equal(get('change-count').textContent, '2 changed files');
+assert.deepEqual(get('changed-files').children.map(row => row.children.map(child => child.textContent)), [['journal.css', 'M'], ['first-entry.md', 'A']]);
+assert.equal(get('recent-commit').textContent, 'Create the journal layout');
 clickTab('studio');
 assert.equal(get('changed-files').children.length, 3);
-assert.equal(get('pin-button').getAttribute('aria-pressed'), 'true', 'Other projects retain independent pin state');
-
-get('continue-button').click();
-assert.equal(get('return-result').hidden, false);
-assert.equal(get('continue-button').getAttribute('aria-expanded'), 'true');
-assert(get('return-studio').classList.contains('is-continued'));
-assert.equal(activeElement, get('result-title'));
-assert.equal(get('result-title').textContent, 'Back to Studio.');
-assert.equal(get('result-note').textContent, get('project-note').textContent);
-get('reset-demo').click();
-assert.equal(get('return-result').hidden, true);
-assert.equal(get('continue-button').getAttribute('aria-expanded'), 'false');
-assert(!get('return-studio').classList.contains('is-continued'));
-assert.equal(activeElement, get('tab-studio'));
-get('continue-button').click();
-clickTab('notes');
-assert.equal(get('return-result').hidden, true, 'Changing project closes previous result');
-assert.equal(get('continue-button').getAttribute('aria-expanded'), 'false');
-assert.equal(get('result-title').textContent, 'Back to Fieldnotes.');
-
+assert.equal(get('branch-name').textContent, 'feat/components');
 const key = (from, pressed, to) => {
   const event = get(`tab-${from}`).dispatch('keydown', { key: pressed });
   assert.equal(event.defaultPrevented, true, `${pressed} prevents page scroll`);
   selected(to);
   assert.equal(activeElement, get(`tab-${to}`));
 };
+key('studio', 'ArrowRight', 'orbit');
+key('orbit', 'ArrowRight', 'notes');
 key('notes', 'ArrowRight', 'studio');
 key('studio', 'ArrowLeft', 'notes');
-key('notes', 'Home', 'studio');
-key('studio', 'End', 'notes');
-key('notes', 'ArrowDown', 'studio');
-key('studio', 'ArrowUp', 'notes');
 key('notes', 'ArrowLeft', 'orbit');
-key('orbit', 'ArrowRight', 'notes');
-const unhandled = get('tab-notes').dispatch('keydown', { key: 'Tab' });
-assert.equal(unhandled.defaultPrevented, false, 'Native Tab navigation is preserved');
-selected('notes');
+key('orbit', 'Home', 'studio');
+key('studio', 'End', 'notes');
+for (const pressed of ['Tab', 'ArrowDown', 'ArrowUp', 'Enter']) {
+  assert.equal(get('tab-notes').dispatch('keydown', { key: pressed }).defaultPrevented, false);
+  selected('notes');
+}
+const assertProgress = value => {
+  const complete = value === 100;
+  assert.equal(range.value, String(value));
+  assert.equal(scene.style.getPropertyValue('--p'), String(value / 100));
+  assert.equal(get('progress-label').textContent, `${String(value).padStart(2, '0')} / 100`);
+  assert.equal(get('return-ticket').hidden, !complete);
+  assert.equal(scene.classList.contains('is-assembled'), complete);
+  for (const artifact of artifacts) {
+    assert.equal(artifact.inert, complete);
+    assert.equal(artifact.getAttribute('aria-hidden'), String(complete));
+  }
+};
+const input = value => { range.value = String(value); range.dispatch('input'); assertProgress(value); };
+input(0);
+input(50);
+assert.match(range.getAttribute('aria-valuetext'), /50% reassembled/);
+assert.equal(get('restore-label').textContent, 'Bring it back');
+input(100);
+assert.match(range.getAttribute('aria-valuetext'), /Fieldnotes context reassembled/);
+assert.match(get('demo-status').textContent, /Continue working is now available/);
+assert.equal(get('restore-label').textContent, 'Continue working');
+const assertContinued = () => {
+  assert.equal(get('continue-result').hidden, false);
+  assert.equal(get('continue-button').hidden, true);
+  assert.equal(get('continue-button').getAttribute('aria-expanded'), 'true');
+  assert.equal(get('ticket-state').textContent, 'YOUR THREAD, PICKED UP');
+  assert.equal(get('restore-label').textContent, 'Start again');
+  assert.equal(activeElement, get('continue-title'));
+};
+const assertReset = () => {
+  assertProgress(0);
+  assert.equal(get('continue-result').hidden, true);
+  assert.equal(get('continue-button').hidden, false);
+  assert.equal(get('continue-button').getAttribute('aria-expanded'), 'false');
+  assert.equal(get('ticket-state').textContent, 'CONTEXT REASSEMBLED');
+  assert.equal(get('restore-label').textContent, 'Bring it back');
+};
+// The adjacent action continues directly after the user finishes the slider.
+get('restore-button').click();
+assertContinued();
+get('restore-button').click();
+assertReset();
+assert.equal(activeElement, range);
+assert.match(get('demo-status').textContent, /Context scattered/);
+// The alternative to dragging assembles and focuses the newly available action.
+get('restore-button').click();
+assertProgress(100);
+assert.equal(activeElement, get('continue-button'));
+assert.equal(get('continue-result').hidden, true);
+get('continue-button').click();
+assertContinued();
+// Moving away from completion clears the result and restores artifact access.
+input(50);
+assert.equal(get('continue-result').hidden, true);
+assert.equal(get('continue-button').hidden, false);
+assert.equal(get('continue-button').getAttribute('aria-expanded'), 'false');
+input(100);
+get('continue-button').click();
+clickTab('orbit');
+assertReset();
+assert.equal(get('ticket-project').textContent, 'Orbit.');
+get('restore-button').click();
+get('continue-button').click();
+get('restore-button').click();
+assertReset();
 for (const [value, label] of [['intel', 'Intel'], ['silicon', 'Apple Silicon']]) {
   radios.find(radio => radio.value === value).dispatch('change');
-  assert.equal(get('chip-hint').textContent, `Have repository access? Choose the ${label} asset on GitHub.`);
+  assert.equal(get('chip-hint').textContent, `On GitHub, choose the ${label} asset.`);
 }
-console.log('Interaction tests passed: progressive enhancement, project content, pin isolation, result focus/reset, keyboard navigation, responsive ARIA, and Mac hints.');
+scene.dispatch('pointermove', { pointerType: 'mouse', clientX: 310, clientY: 70 });
+assert.equal(scene.style.getPropertyValue('--mx'), '0.25');
+assert.equal(scene.style.getPropertyValue('--my'), '-0.25');
+scene.dispatch('pointerleave');
+assert.equal(scene.style.getPropertyValue('--mx'), '0');
+assert.equal(scene.style.getPropertyValue('--my'), '0');
+scene.dispatch('pointermove', { pointerType: 'touch', clientX: 410, clientY: 220 });
+assert.equal(scene.style.getPropertyValue('--mx'), '0');
+scene.dispatch('pointermove', { pointerType: 'mouse', clientX: 310, clientY: 70 });
+media.matches = true;
+assert.equal(mediaListeners.length, 1);
+mediaListeners.forEach(fn => fn());
+assert.equal(scene.style.getPropertyValue('--mx'), '0');
+assert.equal(scene.style.getPropertyValue('--my'), '0');
+scene.dispatch('pointermove', { pointerType: 'mouse', clientX: 410, clientY: 220 });
+assert.equal(scene.style.getPropertyValue('--mx'), '0', 'Reduced motion disables pointer parallax');
+assert.equal(scene.style.getPropertyValue('--my'), '0');
+console.log('Interaction tests passed: progressive enhancement, tab roving, project content and reset, range 0/50/100, inert artifacts, alternative assembly, continuation/focus/start again, Mac hints, and reduced-motion parallax.');

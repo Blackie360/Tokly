@@ -31,8 +31,12 @@ The page links to the v0.2.0 prerelease in the private application repository, e
 
 ## Interaction
 
-Visitors choose one of three fictional projects, inspect its example changes and saved note, then select **Continue working** to bring that next step into focus. The action does not open a desktop app or editor. Project/pin state exists only in memory and resets on reload.
+The Return Desk is an original editorial/physical-paper concept: large black type on warm paper, a lilac note, an offset branch card and a change receipt. A native range control reassembles the artifacts into one return ticket. Visitors can choose three fictional projects, drag or use arrow keys, or select **Bring it back**. **Continue working** reveals a focused result, and **Start again** resets the scene. No app or editor opens.
 
-Tabs support both arrow axes, Home and End, with responsive ARIA orientation. Continue focuses its revealed heading; reset restores the selected tab. Static HTML remains readable with JavaScript unavailable, and script-dependent controls start disabled. FAQs and release links are native HTML.
+Tabs use Left/Right, Home and End with horizontal ARIA semantics at all widths. Hidden artifacts are removed from the accessibility tree. An adjacent button provides the same continuation path without requiring users to backtrack after finishing the slider. State is in memory only and resets on reload.
 
-See `QA.md` for verification coverage and limitations.
+Reduced motion disables parallax and transitions; the range still works through static state changes. Static HTML remains readable when JavaScript is unavailable, and script-dependent controls start disabled. FAQs and release links are native HTML.
+
+The shorter copy uses a two-line product description, single-step notes, brief feature text, and concise release caveats. The public download restrictions remain explicit.
+
+See `QA.md` for verification coverage and limitations. This revised art direction is pending production publication approval.
