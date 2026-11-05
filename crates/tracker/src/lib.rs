@@ -65,12 +65,22 @@ pub struct Commit {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ScanReport {
+    pub root: String,
+    pub scanned_at: i64,
+    pub repositories_found: usize,
+    pub status: String,
+    pub issues: Vec<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub roots: Vec<String>,
     pub projects: Vec<Project>,
     pub activity: Vec<Activity>,
     pub commits: Vec<Commit>,
     pub git_history: Vec<GitHistory>,
+    pub scans: Vec<ScanReport>,
     pub retention_days: i64,
     pub history_days: i64,
     pub preferred_editor: String,
@@ -79,6 +89,7 @@ pub struct Snapshot {
 }
 pub struct Store {
     db: Connection,
+    scans: Vec<ScanReport>,
     pub last_scan: Option<i64>,
     pub warnings: Vec<String>,
 }
@@ -137,6 +148,7 @@ impl Store {
             CREATE TABLE IF NOT EXISTS git_history(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,head_sha TEXT,shallow INTEGER NOT NULL,truncated INTEGER NOT NULL);").map_err(err)?;
         Ok(Self {
             db,
+            scans: vec![],
             last_scan: None,
             warnings: vec![],
         })
@@ -373,6 +385,7 @@ impl Store {
             activity,
             commits,
             git_history,
+            scans: self.scans.clone(),
             retention_days: self.retention(),
             history_days: self.history_days(),
             preferred_editor: self.preferred_editor(),
@@ -382,9 +395,25 @@ impl Store {
     }
     pub fn reconcile(&mut self) -> Result<()> {
         self.warnings.clear();
+        self.scans.clear();
         for root in self.roots()? {
-            if !Path::new(&root).is_dir() {
+            let mut report = ScanReport {
+                root: root.clone(),
+                scanned_at: now(),
+                repositories_found: 0,
+                status: "complete".into(),
+                issues: vec![],
+            };
+            if let Err(e) = std::fs::read_dir(&root) {
+                report.status = if e.kind() == std::io::ErrorKind::PermissionDenied {
+                    "permission"
+                } else {
+                    "unavailable"
+                }
+                .into();
+                report.issues.push(format!("Cannot read folder: {e}"));
                 self.warnings.push(format!("Folder unavailable: {root}"));
+                self.scans.push(report);
                 continue;
             }
             for result in WalkDir::new(&root)
@@ -398,15 +427,32 @@ impl Store {
                 match result {
                     Ok(entry) if entry.file_type().is_dir() => {
                         if entry.path().join(".git").exists() {
+                            report.repositories_found += 1;
+                            let warnings_before = self.warnings.len();
                             self.refresh_project(entry.path())?;
+                            report.issues.extend(
+                                self.warnings[warnings_before..]
+                                    .iter()
+                                    .take(10 - report.issues.len().min(10))
+                                    .cloned(),
+                            );
                         }
                     }
-                    Err(e) if self.warnings.len() < 10 => {
-                        self.warnings.push(format!("Could not scan a folder: {e}"));
+                    Err(e) => {
+                        if report.issues.len() < 10 {
+                            report.issues.push(format!("Could not scan a folder: {e}"));
+                        }
+                        if self.warnings.len() < 10 {
+                            self.warnings.push(format!("Could not scan a folder: {e}"));
+                        }
                     }
                     _ => {}
                 }
             }
+            if !report.issues.is_empty() {
+                report.status = "partial".into();
+            }
+            self.scans.push(report);
         }
         for id in self.project_paths()? {
             self.db
@@ -876,6 +922,39 @@ mod tests {
         repo.set_head("refs/heads/unborn").unwrap();
         s.reconcile().unwrap();
         assert!(s.snapshot().unwrap().commits.is_empty());
+    }
+    #[test]
+    fn discovery_reports_empty_found_unreadable_and_missing_workspaces() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("workspace");
+        std::fs::create_dir(&root).unwrap();
+        let mut s = Store::from_connection(Connection::open_in_memory().unwrap()).unwrap();
+        s.add_root(&root).unwrap();
+        s.reconcile().unwrap();
+        assert_eq!(s.snapshot().unwrap().scans[0].repositories_found, 0);
+        assert_eq!(s.snapshot().unwrap().scans[0].status, "complete");
+        let project = root.join("project");
+        Repository::init(&project).unwrap();
+        s.reconcile().unwrap();
+        assert_eq!(s.snapshot().unwrap().scans[0].repositories_found, 1);
+        s.save_note(
+            project.canonicalize().unwrap().to_str().unwrap(),
+            "Preserve this note",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o000)).unwrap();
+            let result = s.reconcile();
+            std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
+            result.unwrap();
+            assert_eq!(s.snapshot().unwrap().scans[0].status, "permission");
+        }
+        std::fs::rename(&root, temp.path().join("moved")).unwrap();
+        s.reconcile().unwrap();
+        assert_eq!(s.snapshot().unwrap().scans[0].status, "unavailable");
+        assert_eq!(s.snapshot().unwrap().projects[0].note, "Preserve this note");
     }
     #[test]
     fn legacy_cache_migrates_without_becoming_active_history() {
