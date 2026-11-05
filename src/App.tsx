@@ -30,6 +30,7 @@ import { call, native, resetPreview, sample } from "./api";
 import {
   empty,
   inPeriod,
+  historyExplanation,
   relative,
   weekDays,
   type Project,
@@ -131,7 +132,7 @@ export default function App() {
   }
   const activeIds = new Set(projects.map((p) => p.id));
   const activities = data.activity.filter((a) => activeIds.has(a.projectId));
-  const commits = data.commits.filter((a) => activeIds.has(a.projectId));
+  const commits = data.commits.filter((a) => activeIds.has(a.projectId) && a.timestamp >= Date.now() / 1000 - Math.min(data.historyDays, data.retentionDays) * 86400);
   const days = weekDays(week);
   const periodActivity = activities.filter((a) => inPeriod(a.timestamp, days));
   const periodCommits = commits.filter((c) => inPeriod(c.timestamp, days));
@@ -188,7 +189,7 @@ export default function App() {
             </div>
           </div>
           <div className="version">
-            Tokly for macOS <span>v0.1.0</span>
+            Tokly for macOS <span>v0.2.0</span>
           </div>
         </div>
       </aside>
@@ -575,6 +576,16 @@ export default function App() {
                         <div className="tab-content" role="tabpanel">
                           {tab === "Activity" ? (
                             <>
+                              <div className="history-controls">
+                                <label htmlFor="history-days">Git history</label>
+                                <select id="history-days" value={data.historyDays} disabled={busy} onChange={(e) => void action("set_history_days", {days: Number(e.target.value)}, "History updated")}>
+                                  {[7,30,90].map(days => <option key={days} value={days}>Last {days} days</option>)}
+                                </select>
+                                <p className="small">Imports and shows commits from all authors reachable from the current branch. Existing collected history is kept until retention expires.</p>
+                                {data.retentionDays < data.historyDays && <p className="small">Your {data.retentionDays}-day retention limits this history. Increase retention in Settings to import older commits.</p>}
+                              </div>
+                              {!commits.some(c => c.projectId === current.id) && <p className="history-explanation" role="status">{historyExplanation(current, data.historyDays, data.retentionDays)}</p>}
+
                               {commits
                                 .filter((c) => c.projectId === current.id)
                                 .slice(0, 20)
@@ -612,8 +623,7 @@ export default function App() {
                                   (a) => a.projectId === current.id,
                                 ) && (
                                   <div className="empty-inline">
-                                    No recent activity recorded for this
-                                    project.
+                                    No file activity recorded in this view yet.
                                   </div>
                                 )}
                             </>
@@ -849,7 +859,7 @@ export default function App() {
                   </div>
                   <p className="small">
                     Commits include all authors on the current branch during the
-                    last 7 days. File history is limited to the latest 500
+                    selected {Math.min(data.historyDays, data.retentionDays)} days. File history is limited to the latest 500
                     events.
                   </p>
                 </>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { inPeriod, weekDays } from "./model";
+import { historyExplanation, inPeriod, weekDays } from "./model";
 describe("weekly boundaries", () => {
   it("uses local calendar days, including year rollover", () => {
     const days = weekDays(0, new Date(2026, 0, 2, 12));
@@ -11,5 +11,15 @@ describe("weekly boundaries", () => {
     const end = new Date(days[6]);
     end.setDate(end.getDate() + 1);
     expect(inPeriod(end.getTime() / 1000, days)).toBe(false);
+  });
+});
+
+describe("history explanations", () => {
+  const project = {id: "p",name: "p",branch: "main",changedFiles: [],note: "",lastActivity: null,excluded: false,available: true,pinned: false,lastCommit: 1000000};
+  it("distinguishes older history, no commits and unavailable folders", () => {
+    expect(historyExplanation(project,7,90,3000000)).toContain("outside the 7-day");
+    expect(historyExplanation({...project,lastCommit:null},7,90)).toContain("No commits");
+    expect(historyExplanation({...project,available:false},7,90)).toContain("Folder unavailable");
+    expect(historyExplanation(project,90,7,3000000)).toContain("outside the 7-day");
   });
 });
