@@ -148,3 +148,25 @@ test("removed editor is explained and buttons fall back to Finder", async ({page
   await page.getByRole("button", {name:"Overview", exact:true}).click();
   await expect(page.getByRole("button", {name:"Open in Visual Studio Code"}).first()).toBeVisible();
 });
+
+test("next-step sticky note stays compact beside a long project list", async ({page}) => {
+  await page.evaluate(() => {
+    const s=JSON.parse(localStorage.getItem("tokly-preview-v1")!);
+    s.projects[0].note="A long saved next step. ".repeat(70);
+    s.projects.push(...Array.from({length:12},(_,i)=>({...s.projects[1],id:`/sample/${i}`,name:`Project ${i}`})));
+    localStorage.setItem("tokly-preview-v1",JSON.stringify(s));
+  });
+  await page.reload();
+  for (const width of [1600,1000,600]) {
+    await page.setViewportSize({width,height:900});
+    const panel=page.locator(".continue-panel");
+    const box=await panel.boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(320);
+    expect(box!.height).toBeLessThan(430);
+    const note=page.getByLabel("Saved next step",{exact:true});
+    expect(await note.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
+    await expect(panel.getByRole("button", {name:/Open in/})).toBeVisible();
+    await expect(panel.getByRole("button", {name:/Edit next step/})).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+});

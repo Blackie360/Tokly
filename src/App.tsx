@@ -464,7 +464,7 @@ export default function App() {
                         Your next little win
                       </span>
                       <h2>{current?.name || "Your next project"}</h2>
-                      <p>
+                      <p tabIndex={0} aria-label="Saved next step">
                         {current?.note ||
                           "Leave a next-step note so you know where to begin."}
                       </p>
