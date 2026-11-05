@@ -1595,3 +1595,6 @@ select {
 .graph-pagination { margin-top: 16px; }
 .graph-node { position: absolute; display: block; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 9px #b9a2ff33; }
 .graph-boundary { width: 6px; height: 6px; background: #171a2e; border: 1px solid; box-shadow: none; }
+.workspace-report { margin-bottom: 16px; }
+.discovery-report { padding: 0 12px 10px; font-size: 12px; overflow-wrap: anywhere; }
+.discovery-report summary { cursor: pointer; color: #c9b8f2; }

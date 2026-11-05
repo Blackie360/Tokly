@@ -875,7 +875,7 @@ export default function App() {
                       </div>
                     </div>
                     {data.roots.map((path) => (
-                      <div className="folder-setting" key={path}>
+                      <div className="workspace-report" key={path}><div className="folder-setting">
                         <Folder size={17} />
                         <span>{path}</span>
                         <button
@@ -899,7 +899,11 @@ export default function App() {
                           <X size={16} />
                         </button>
                       </div>
+                      <DiscoveryReport path={path} data={data}/>
+                      </div>
                     ))}
+                    <p className="small">Search stays inside these folders: up to 12 levels, without following folder symlinks. Dependencies, caches and build folders are skipped. Excluded projects can still be found, but are not tracked.</p>
+                    <button className="text-button" disabled={busy} onClick={() => void action("rescan", {}, "Workspace scan finished")}>Scan folders again</button>
                     <button
                       className="button secondary"
                       disabled={busy}
@@ -1007,11 +1011,12 @@ export default function App() {
                       <div>
                         <h2>A small local memory</h2>
                         <p>
-                          File paths, timestamps, Git metadata and notes. No
-                          file contents or remote uploads.
+                          Tokly stores paths, filenames, timestamps, commit subjects and notes locally on this Mac. These can contain sensitive information, even without source code.
                         </p>
                       </div>
                     </div>
+                    <p className="small">Tokly does not upload source files or tracking data and has no cloud sync or telemetry. Git graph reads local metadata without fetching or changing repositories. Other editors, backup services and shared folders follow their own privacy settings.</p>
+                    <p className="small">The local database is not encrypted by Tokly. Protect this Mac and be careful when sharing exports. Activity retention deletes old activity metadata; your saved notes remain until you remove them or their workspace.</p>
                     <div className="setting-row">
                       <div>
                         <label htmlFor="retention">
@@ -1101,4 +1106,18 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function DiscoveryReport({path,data}:{path:string;data:Snapshot}) {
+  const scan=data.scans.find(s=>s.root===path);
+  if (!scan) return <p className="small">Waiting for the first scan. Use Scan folders again to check this workspace.</p>;
+  const title={complete:"Scan complete",partial:"Scan incomplete",permission:"Folder access needed",unavailable:"Folder unavailable"}[scan.status];
+  return <div className="discovery-report" aria-label={`Scan results for ${path}`}>
+    <p><strong>{title}</strong> · {scan.repositoriesFound} {scan.repositoriesFound===1?"repository":"repositories"} found · {relative(scan.scannedAt)}</p>
+    {scan.status==="complete" && scan.repositoriesFound===0 && <p className="small">No Git repositories found. Choose a folder containing a repository with a .git directory or file. A downloaded ZIP or ordinary folder may not have Git history. Tokly does not create or clone repositories.</p>}
+    {scan.status==="permission" && <p className="small">Choose this folder again using Add workspace folder. If macOS still denies access, review Tokly in System Settings → Privacy & Security → Files and Folders, then scan again. Tokly will not change permissions for you.</p>}
+    {scan.status==="unavailable" && <p className="small">Reconnect the drive or restore the folder to this path, then scan again. If it moved, add its new parent folder. Existing notes stay saved; removing the old workspace can delete its notes.</p>}
+    {scan.status==="partial" && <p className="small">Some folders or Git metadata could not be read. Check the paths below, reconnect missing drives or review folder access, then scan again. Results may be incomplete.</p>}
+    {scan.issues.length>0 && <details><summary>Scan details</summary>{scan.issues.map((issue,i)=><p className="small" key={i}>{issue}</p>)}</details>}
+  </div>;
 }

@@ -83,3 +83,7 @@ flowchart TD
 - `src-tauri`: native commands, folder chooser, menu bar and lifecycle.
 - `src`: desktop UI plus an explicitly separated browser sample adapter.
 - `.github/workflows/ci.yml`: interface tests and macOS build matrix.
+
+Workspace settings report each approved folder's latest scan, repository count and incomplete/unavailable status, with explicit limits and recovery steps. Scanning never grants permissions or clones repositories. Paths, filenames, commit subjects and notes may be sensitive local data; Tokly's database is not application-encrypted. Protect the Mac and any exports. Other editors, backup services and shared folders have their own data policies.
+
+See [Mac distribution readiness](docs/RELEASE_READINESS.md) for the current signing, notarization and public-download blockers.

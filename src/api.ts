@@ -153,6 +153,7 @@ export function sample() {
     ...empty,
     gitHistory: projects.map(p => ({projectId: p.id, headSha: commits.find(c => c.projectId === p.id)?.sha || null, shallow: false, truncated: false})),
     roots: ["/Users/you/Projects"],
+    scans: [{root:"/Users/you/Projects",scannedAt:time,repositoriesFound:projects.length,status:"complete",issues:[]}],
     projects,
     activity,
     commits,

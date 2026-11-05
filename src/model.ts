@@ -29,8 +29,10 @@ export interface Commit {
 export interface GitRef { name: string; sha: string; kind: "local" | "remote" | "tag" | "other"; }
 export interface GraphPage { earlierChildren: Record<string,string[]>; commits: Commit[]; refs: GitRef[]; headSha: string | null; headLabel: string; shallow: boolean; total: number; offset: number; nextOffset: number | null; generation: string; warnings: string[]; }
 export interface Editor { id: string; name: string; }
+export interface ScanReport { root: string; scannedAt: number; repositoriesFound: number; status: "complete" | "partial" | "permission" | "unavailable"; issues: string[]; }
 export interface Snapshot {
   roots: string[];
+  scans: ScanReport[];
   projects: Project[];
   activity: Activity[];
   commits: Commit[];
@@ -43,6 +45,7 @@ export interface Snapshot {
 }
 export const empty: Snapshot = {
   roots: [],
+  scans: [],
   projects: [],
   activity: [],
   commits: [],

@@ -233,3 +233,15 @@ test("graph distinguishes missing parents and empty repositories", async ({page}
   await expect(page.getByText('No commits available from local references.')).toBeVisible();
   await expect(page.getByRole('button',{name:'Next commits',exact:true})).toBeDisabled();
 });
+
+test("workspace scan reports explain missing repositories and folder access", async ({page}) => {
+  await page.evaluate(() => {const s=JSON.parse(localStorage.getItem('tokly-preview-v1')!);s.scans=[{root:s.roots[0],scannedAt:Date.now()/1000,repositoriesFound:0,status:'complete',issues:[]}];localStorage.setItem('tokly-preview-v1',JSON.stringify(s));});
+  await page.reload();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await expect(page.getByText(/No Git repositories found/)).toBeVisible();
+  await expect(page.getByText(/database is not encrypted by Tokly/)).toBeVisible();
+  await page.evaluate(() => {const s=JSON.parse(localStorage.getItem('tokly-preview-v1')!);s.scans[0].status='permission';s.scans[0].issues=['Permission denied'];localStorage.setItem('tokly-preview-v1',JSON.stringify(s));});
+  await page.getByRole('button',{name:'Scan folders again',exact:true}).click();
+  await expect(page.getByText('Folder access needed',{exact:true})).toBeVisible();
+  await expect(page.getByText(/Tokly will not change permissions for you/)).toBeVisible();
+});
