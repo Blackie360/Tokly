@@ -348,3 +348,26 @@ test('return context explains measurable changes and remembers Resume',async({pa
   await expect(card.getByText('Same observed context since your last Resume',{exact:true})).toBeVisible();
   await page.reload();await expect(card.getByText('Same observed context since your last Resume',{exact:true})).toBeVisible();
 });
+
+test('backup restore previews, cancels and confirms without silently importing',async({page})=>{
+  await page.addInitScript(()=>{Object.assign(window,{isTauri:true,__TAURI_INTERNALS__:{invoke:async(command:string,args:Record<string,unknown>)=>{
+    if(command==='snapshot')return JSON.parse(localStorage.getItem('tokly-preview-v1')!);
+    if(command==='installed_editors')return [];
+    if(command==='preview_restore'){if(args.content==='bad')throw 'Invalid backup';return {total:2,duplicates:1,projects:[{name:'Care Clarity',projectId:'/sample/care',count:2}]};}
+    if(command==='restore_notes'){Object.assign(window,{restoreCalls:(Reflect.get(window,'restoreCalls')||0)+1});return {total:2,duplicates:1,projects:[]};}
+    return false;
+  }}});});
+  await page.reload();await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const input=page.getByLabel('Choose note backup');
+  await input.setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from('{}')});
+  await expect(page.getByRole('region',{name:'Backup restore preview'})).toBeVisible();
+  expect(await page.evaluate(()=>Reflect.get(window,'restoreCalls')||0)).toBe(0);
+  await page.getByRole('button',{name:'Cancel restore',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Backup restore preview'})).toHaveCount(0);
+  await input.setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from('bad')});
+  await expect(page.getByRole('alert')).toContainText('Invalid backup');
+  await input.setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from('{}')});
+  await page.getByRole('button',{name:'Restore 2 notes',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Restored 2 notes. Existing notes were preserved.');
+  expect(await page.evaluate(()=>Reflect.get(window,'restoreCalls'))).toBe(1);
+});

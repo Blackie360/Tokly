@@ -88,6 +88,10 @@ async fn remove_root(path: String, s: State<'_, Shared>) -> Result<(), String> {
     with_store(s.inner().clone(), move |s| s.remove_root(&path)).await
 }
 #[tauri::command]
+async fn preview_restore(content:String,s:State<'_,Shared>)->Result<tokly_tracker::restore::RestorePreview,String>{with_store(s.inner().clone(),move |s|s.preview_restore(&content)).await}
+#[tauri::command]
+async fn restore_notes(content:String,s:State<'_,Shared>)->Result<tokly_tracker::restore::RestorePreview,String>{with_store(s.inner().clone(),move |s|s.restore_notes(&content)).await}
+#[tauri::command]
 async fn export_notes(drafts: Vec<tokly_tracker::notes::Draft>, s: State<'_, Shared>) -> Result<bool,String> {
     let backup=with_store(s.inner().clone(), move |s|s.notes_backup(drafts)).await?;
     tauri::async_runtime::spawn_blocking(move || {
@@ -246,6 +250,8 @@ fn main() {
             add_note,
             select_note,
             export_notes,
+            preview_restore,
+            restore_notes,
             exclude_project,
             set_retention,
             set_history_days,
