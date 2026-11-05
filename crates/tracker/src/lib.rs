@@ -499,6 +499,9 @@ pub fn start(store: Arc<Mutex<Store>>) -> Tracker {
             })
             .ok();
         let mut watched = HashSet::<String>::new();
+        let mut requested = HashSet::<String>::new();
+        let mut watch_warnings = Vec::<String>::new();
+        let mut watch_attempt = Instant::now() - Duration::from_secs(60);
         let mut pending = HashMap::<PathBuf, Instant>::new();
         let mut scan = Instant::now() - Duration::from_secs(60);
         while !worker_stop.load(std::sync::atomic::Ordering::Relaxed) {
@@ -534,22 +537,28 @@ pub fn start(store: Arc<Mutex<Store>>) -> Tracker {
                     .filter(|p| Path::new(p).is_dir())
                     .collect()
             };
-            if desired != watched {
+            if desired != requested
+                || (desired != watched && watch_attempt.elapsed() >= Duration::from_secs(60))
+            {
+                watch_warnings.clear();
                 if let Some(w) = watcher.as_mut() {
                     for p in watched.difference(&desired) {
                         let _ = w.unwatch(Path::new(p));
                     }
-                    for p in desired.difference(&watched) {
-                        if let Err(e) = w.watch(Path::new(p), RecursiveMode::Recursive) {
-                            s.warnings.push(format!("Could not watch {p}: {e}"));
+                    watched.retain(|p| desired.contains(p));
+                    for p in desired.difference(&watched).cloned().collect::<Vec<_>>() {
+                        match w.watch(Path::new(&p),RecursiveMode::Recursive) {
+                            Ok(())=>{watched.insert(p);},
+                            Err(e)=>watch_warnings.push(format!("Could not watch {p}: {e}. Git status will still refresh every minute.")),
                         }
                     }
-                } else {
-                    s.warnings.push(
+                } else if !desired.is_empty() {
+                    watch_warnings.push(
                         "File watcher unavailable; Git status will refresh every minute.".into(),
                     );
                 }
-                watched = desired;
+                requested = desired;
+                watch_attempt = Instant::now();
                 scan = Instant::now() - Duration::from_secs(60);
                 pending.clear();
             }
@@ -573,6 +582,11 @@ pub fn start(store: Arc<Mutex<Store>>) -> Tracker {
                     s.warnings.push(e);
                 }
                 scan = Instant::now();
+            }
+            for warning in &watch_warnings {
+                if !s.warnings.contains(warning) {
+                    s.warnings.push(warning.clone());
+                }
             }
         }
     });
@@ -744,5 +758,26 @@ mod tests {
             assert!(Instant::now() < deadline, "watcher did not record edit");
             thread::sleep(Duration::from_millis(100));
         }
+    }
+    #[test]
+    fn local_database_restores_notes_and_preferences() {
+        let (temp, mut s, p) = fixture();
+        s.add_root(temp.path()).unwrap();
+        s.reconcile().unwrap();
+        let db = temp.path().join("state.db");
+        let mut persisted = Store::open(&db).unwrap();
+        persisted.add_root(&p).unwrap();
+        persisted.reconcile().unwrap();
+        persisted
+            .save_note(p.to_str().unwrap(), "Pick up here")
+            .unwrap();
+        persisted.set_paused(true).unwrap();
+        persisted.set_retention(30).unwrap();
+        drop(persisted);
+        let restored = Store::open(&db).unwrap().snapshot().unwrap();
+        assert!(restored.paused);
+        assert_eq!(restored.retention_days, 30);
+        assert_eq!(restored.projects[0].note, "Pick up here");
+        assert_eq!(restored.roots.len(), 1);
     }
 }

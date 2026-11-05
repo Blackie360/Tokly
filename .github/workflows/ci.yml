@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, 'codex/tokly-*']
   workflow_dispatch:
+concurrency:
+  group: tokly-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

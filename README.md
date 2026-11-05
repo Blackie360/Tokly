@@ -57,7 +57,7 @@ cargo clippy --manifest-path crates/tracker/Cargo.toml --all-targets -- -D warni
 npm run tauri -- build --bundles app --no-sign
 ```
 
-Install the browser once with `npx playwright install chromium`. CI builds unsigned macOS app bundles for Apple Silicon and Intel and uploads them as workflow artifacts. To preserve executable permissions when sharing a downloaded app, archive it on macOS before distribution. These are developer test builds, not notarized releases. Signing/notarization requires the owner's Apple Developer identity and credentials, not included in this repository. macOS folder permissions, Finder/Cursor opening, login startup, menu bar behavior, and sleep/wake recovery need real-Mac acceptance testing before shipping.
+Install the browser once with `npx playwright install chromium`. CI builds unsigned macOS app bundles for Apple Silicon and Intel and uploads them as workflow artifacts. The app is zipped with macOS metadata to preserve executable permissions. These are developer test builds, not notarized releases. Signing/notarization requires the owner's Apple Developer identity and credentials, not included in this repository. macOS folder permissions, Finder/Cursor opening, login startup, menu bar behavior, and sleep/wake recovery need real-Mac acceptance testing before shipping.
 
 ## Architecture
 
