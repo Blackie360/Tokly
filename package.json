@@ -1,58 +1,34 @@
 {
-  "name": "tokly-platform",
+  "name": "tokly",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "build": "next build",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:migrate:neon": "tsx scripts/migrate-neon.ts",
-    "db:migrate:neon:check": "tsx scripts/migrate-neon.ts --check",
-    "db:seed": "tsx scripts/seed.ts",
-    "db:retention": "tsx scripts/retention.ts",
-    "dev": "tsx scripts/dev.ts",
-    "dev:web": "next dev",
-    "lint": "eslint .",
-    "start": "next start",
+    "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:integration": "vitest run tests/postgres.integration.test.ts",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "test:core": "cargo test --manifest-path crates/tracker/Cargo.toml"
   },
   "dependencies": {
-    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
-    "@fontsource/ibm-plex-mono": "^5.3.0",
-    "better-auth": "latest",
-    "drizzle-orm": "latest",
-    "next": "latest",
-    "postgres": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "recharts": "latest",
-    "resend": "latest",
-    "server-only": "latest",
-    "shiki": "^4.4.3",
-    "zod": "latest"
+    "@fontsource/manrope": "^5.2.0",
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-autostart": "^2.5.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@next/env": "^16.3.0",
-    "@playwright/test": "latest",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "drizzle-kit": "latest",
-    "eslint": "latest",
-    "eslint-config-next": "latest",
-    "tsx": "latest",
-    "typescript": "^5.9.3",
-    "vitest": "latest"
-  },
-  "engines": {
-    "node": ">=22"
+    "@playwright/test": "1.55.1",
+    "@tauri-apps/cli": "^2.8.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0",
+    "vitest": "^3.2.0"
   }
 }

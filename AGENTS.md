@@ -1,15 +1,12 @@
-# Tokly
+# Tokly desktop
 
-This is a Next.js App Router application. Use Server Components for reads,
-Server Actions for UI mutations, and Route Handlers for public integrations.
-Never store prompts, completions, provider credentials, or raw project keys.
+This repository is a local-first macOS project tracker. Windows and Linux are planned for v2.
 
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+- UI: React + TypeScript + Vite. Native shell: Tauri 2. Tracking engine: `crates/tracker` (Rust + SQLite + notify + libgit2).
+- Keep tracking independent of the webview. Closing the window hides it; explicit Quit stops the process.
+- Work only within user-approved workspace roots. Do not add whole-disk scans, editor-history inspection, Accessibility permissions, or cloud telemetry.
+- Never store file contents, diffs, credentials, prompts or completions. Preserve local-only operation and no-account onboarding.
+- Midnight + Lilac is the chosen theme. Peach identifies a next-step note; mint indicates tracking state. Use sentence case and labelled controls.
+- Browser mode is a clearly labelled sample preview, never actual workstation tracking.
+- Before delivery: `npm run build`, `npm test`, `npm run test:e2e`, and `cargo test --manifest-path crates/tracker/Cargo.toml`. Run native bundling on macOS via CI.
+- Do not claim unsigned bundles are release-ready; signing, notarization, and real-device sleep/wake and login tests remain release gates.

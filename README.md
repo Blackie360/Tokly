@@ -1,121 +1,78 @@
 # Tokly
 
-Tokly is a standalone, multi-tenant Next.js application for monitoring provider-neutral AI token usage. Teams send operational usage events through a REST endpoint or the server-only TypeScript SDK, then inspect tokens, reported or calculated cost, models, projects, environments, budgets, and ingestion health.
+**Pick up where you left off.** Tokly is a local-first desktop companion that discovers Git projects inside workspace folders you choose, records file activity, and keeps your next step close.
 
-It is intentionally not an AI proxy. It never requests provider API keys and its strict ingestion schema rejects prompts, completions, files, and arbitrary metadata.
+This rebuild replaces the previous AI usage platform. No server, login, API billing, token telemetry, or cloud database is required. Version 1 targets macOS 12+; Windows and Linux are planned for version 2.
 
-## Stack
+## Run on a Mac
 
-- Next.js App Router, TypeScript, Server Components, and Server Actions
-- PostgreSQL, Drizzle ORM, migrations, and forced row-level security
-- Better Auth email/password, optional GitHub OAuth, and organizations
-- Recharts, IBM Plex Sans/Mono, CSS Modules, light/dark themes
-- Resend for optional threshold email delivery
-- Vitest and Playwright
+Install Node.js 22+, the current stable Rust toolchain, and Xcode Command Line Tools (`xcode-select --install`). Then:
 
-## Local setup
+```sh
+npm ci
+npm run desktop
+```
 
-Requirements: Node.js 22+, npm, and PostgreSQL 15+.
+Choose a parent workspace such as `~/Projects`. Tokly discovers repositories up to 12 directory levels deep, including Git worktrees. Continue working in any editor or agent; Tokly observes file changes without needing projects opened in its own window. Closing the window leaves tracking in the menu bar. Choose **Quit Tokly** to exit. Launch at login is opt-in in Settings.
 
-```bash
-cp .env.example .env.local
-docker compose up -d postgres
-npm install
-npm run db:migrate
-npm run db:seed
+Use **Open in Cursor** for the selected project or **Open folder** for Finder. Cursor must already be installed. No editor plugin is required for filesystem tracking. Merely opening an editor or folder is not recorded as work; v1 cannot attribute changes to a particular editor, person, or agent.
+
+## What works
+
+- Native folder approval, automatic Git discovery, exclusions and restoring excluded projects.
+- Debounced file activity with metadata stored in local SQLite.
+- Branch, working-tree changes, recent commits, and disconnected-folder status.
+- Per-project next-step notes with explicit Save and local persistence.
+- Overview, project Activity / Changes / Notes, weekly progress, and Settings.
+- Menu bar access, pause/resume, close-to-background, and opt-in login startup.
+- Configurable 7 / 30 / 90 / 365-day activity retention.
+- Midnight + Lilac interface with peach notes, mint status, keyboard focus and reduced-motion support.
+
+## Privacy and limits
+
+Only approved parent folders are scanned; directory symlinks are not followed. Dependencies, caches and build folders are skipped. Git-ignored files are omitted from file-event records. SQLite lives in the app's macOS Application Support directory under identifier `com.blackielabs.tokly`; it stores paths, timestamps, branch names, filenames, commit summaries/SHAs, notes and settings, never source contents or diffs. There are no network integrations or AI calls.
+
+The first scan imports commits from the current branch over the last seven days, from all authors; these are repository activity, not a measure of your personal productivity. Imported commits are deduplicated by repository and SHA and then retained for your selected duration. History follows the currently checked-out branch when scanning; previously collected commits remain until retention expires. A scan is capped at 10,000 commits. File activity shown in the interface and weekly chart is limited to the latest 500 retained file events. Neither edit counts nor commits represent completed tasks or hours worked.
+
+The watcher batches saves with a two-second quiet period. It reconciles discovery and Git state every minute and after observed changes. On wake, reconciliation resumes; after downtime, current Git state can be recovered but missing edit events cannot. A bounded notification queue protects memory; overflow can lose edit history but the next scan repairs current Git state. Workspace scanning currently holds the database lock, so very large workspaces may delay snapshots. Keep roots focused on development workspaces. Pause drops pending events; resuming rescans current Git state and can import commits made while paused. Exclusion stops future collection but keeps existing records and notes locally; removing the last approving workspace deletes the affected project records and notes.
+
+## Browser preview
+
+```sh
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. The `/demo` route is database-free. For the real flow, create an account, workspace, and project; copy the write key when it is revealed. The seed script creates telemetry fixtures and prints a local-only test key, but it does not create a password account.
+Open `http://localhost:1420`, then **Explore a sample workspace**. The preview uses synthetic data in browser localStorage; it cannot access local folders, run Git, open Cursor or enable login startup. Notes and preferences work within that sample. **Reset sample workspace** clears it. Real tracking is only available in the native application.
 
-Generate a production auth secret with `openssl rand -base64 32`. Set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to the canonical HTTPS origin in production. GitHub, Google, and Resend variables are optional.
+## Build and verify
 
-## Ingest usage
-
-`POST /api/v1/events` accepts a JSON object containing 1–100 events. A batch is validated before a transaction starts, so one invalid event rejects the whole batch. Retries are safe: `(project_id, event_id)` is unique and the response reports accepted and duplicate counts.
-
-```bash
-curl -X POST http://localhost:3000/api/v1/events \
-  -H "Authorization: Bearer tok_test_REPLACE_ME" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "events": [{
-      "id": "request_01J5T7R6M4",
-      "timestamp": "2026-08-04T10:00:00.000Z",
-      "provider": "openai",
-      "model": "your-model-id",
-      "operation": "generation",
-      "usage": { "inputTokens": 1200, "outputTokens": 240, "cacheReadTokens": 400 },
-      "costUsd": "0.0042",
-      "latencyMs": 842,
-      "status": "success",
-      "dimensions": { "environment": "production", "feature": "support-copilot", "traceId": "trace_01" }
-    }]
-  }'
-```
-
-Success returns `{"accepted":1,"duplicates":0}`. Write keys are 32 random bytes with a `tok_live_` or `tok_test_` prefix. The raw value is cleared after the one-time reveal; only its visible prefix and SHA-256 digest are stored.
-
-Request controls include a 256 KiB body limit, strict allowlisted fields, bounded strings, non-negative safe-integer tokens, revoked-key checks, and an atomic PostgreSQL per-key event limit configured by `INGEST_EVENTS_PER_MINUTE`.
-
-## TypeScript SDK
-
-Tokly is SDK-first. Install the server-only package in each application that should report exact AI usage and business context. Never instantiate it in browser code.
-
-```bash
-npm install tokly-sdk
-```
-
-```ts
-import { createTokly } from "tokly-sdk";
-import { fromOpenAIResponse } from "tokly-sdk/adapters";
-
-const meter = createTokly({
-  apiKey: process.env.TOKLY_API_KEY!,
-  endpoint: process.env.TOKLY_URL, // optional; defaults to https://tokly.blackielabs.com
-});
-
-meter.capture(fromOpenAIResponse({
-  model: response.model,
-  usage: response.usage,
-  dimensions: { environment: "production", feature: "support-copilot" },
-}));
-
-await meter.shutdown(); // flush during a graceful process shutdown
-```
-
-Adapters are included for the Vercel AI SDK, OpenAI Responses, Anthropic Messages, Google Gemini, OpenRouter, and Ollama response shapes. OpenRouter events retain provider-reported cost, cache, and reasoning usage. Ollama events track local token usage and latency without inventing a dollar cost. `capture()` buffers up to 100 events per request; `flush()` retries transient failures and `429` responses with exponential backoff while rejecting permanent client errors immediately.
-
-The SDK is the primary integration and does not monitor or change a developer workstation. Source for the separate, optional `tokly-cli` connector lives in [`packages/cli`](./packages/cli), but its first npm release is still pending. Do not advertise an install command until the package is available from the registry.
-
-Once released, the CLI will report only the telemetry each tool exposes. Claude Code and Gemini CLI provide exact token metrics; Cursor, Codex, and Ollama provide lifecycle activity only. See [`packages/cli`](./packages/cli/README.md) for its current release status and privacy boundaries.
-
-## Cost and budgets
-
-Provider-reported `costUsd` always wins. Otherwise, Tokly selects the model price active at the event timestamp and prices uncached input, output, cache reads, and cache writes independently. Unknown models remain explicitly `unpriced`; the application never invents a rate.
-
-The dashboard exposes pricing coverage, sampled average latency, and per-event cost provenance so operators can distinguish provider-reported, calculated, and unpriced activity. Budget threshold crossings remain visible in the in-app alert history even when optional email delivery is not configured.
-
-Maintain the `model_prices` table with verified provider source URLs and non-overlapping effective windows. Close the old row with `effective_to`, insert a new row with `effective_from`, and never rewrite historical prices. See [operations](./docs/operations.md).
-
-Organization and project monthly budgets create unique in-app notifications at 50%, 80%, and 100%. Resend delivery is idempotent through a unique notification-recipient outbox; budgets alert but never block or downgrade requests.
-
-## Validation
-
-```bash
-npm run lint
-npm run typecheck
-npm test
+```sh
 npm run build
+npm test
 npm run test:e2e
+cargo test --manifest-path crates/tracker/Cargo.toml --locked
+cargo clippy --manifest-path crates/tracker/Cargo.toml --all-targets -- -D warnings
+# On macOS:
+npm run tauri -- build --bundles app --no-sign
 ```
 
-PostgreSQL integration tests require a migrated disposable database:
+Install the browser once with `npx playwright install chromium`. CI builds unsigned macOS app bundles for Apple Silicon and Intel and uploads them as workflow artifacts. To preserve executable permissions when sharing a downloaded app, archive it on macOS before distribution. These are developer test builds, not notarized releases. Signing/notarization requires the owner's Apple Developer identity and credentials, not included in this repository. macOS folder permissions, Finder/Cursor opening, login startup, menu bar behavior, and sleep/wake recovery need real-Mac acceptance testing before shipping.
 
-```bash
-TEST_DATABASE_URL=postgresql://tokly_app:tokly@localhost:5433/tokly npm run test:integration
+## Architecture
+
+```mermaid
+flowchart TD
+  F[Approved workspace folders] --> W[Native watcher]
+  W --> B[Debounce and filter]
+  F --> G[Git discovery and inspection]
+  B --> D[Local SQLite]
+  G --> D
+  N[Next-step notes] --> D
+  D --> U[React desktop interface]
 ```
 
-The integration suite writes isolated UUID fixtures and removes only those fixtures. The database-backed Playwright onboarding suite requires a migrated disposable database and is opt-in with `E2E_DATABASE_URL`; it covers account creation, workspace/project setup, one-time key reveal, ingestion, dashboard updates, explorer filters/charts, budgets, and invitations. The database-free desktop/mobile demo tests always run.
-
-See [architecture](./docs/architecture.md) for the trust boundaries, [deployment](./docs/deployment.md) for GitHub Actions and Vercel setup, and [operations](./docs/operations.md) for retention and incident-safe key rotation.
+- `crates/tracker`: platform-neutral tracking engine, persistence and tests.
+- `src-tauri`: native commands, folder chooser, menu bar and lifecycle.
+- `src`: desktop UI plus an explicitly separated browser sample adapter.
+- `.github/workflows/ci.yml`: interface tests and macOS build matrix.
