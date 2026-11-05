@@ -25,6 +25,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { NoteDrafts } from "./noteDrafts";
 import { CommitGraph } from "./CommitGraph";
 import { EditorActions } from "./EditorActions";
 import { call, native, resetPreview, sample } from "./api";
@@ -57,8 +58,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const [tab, setTab] = useState("Activity");
-  const [note, setNote] = useState("");
-  const [noteDirty, setNoteDirty] = useState(false);
+  const [draftVersion, setDraftVersion] = useState(0);
   const [week, setWeek] = useState(0);
   const [login, setLogin] = useState(false);
   const [editors, setEditors] = useState<Editor[]>([]);
@@ -75,15 +75,27 @@ export default function App() {
   const missingEditor = !["auto", "finder"].includes(data.preferredEditor) && !editors.some(e => e.id === data.preferredEditor);
 
   const searchRef = useRef<HTMLInputElement>(null);
+  const snapshotRequest = useRef(0);
   const refresh = useCallback(async () => {
+    const ticket=++snapshotRequest.current;
     try {
-      setData(await call<Snapshot>("snapshot"));
+      const snapshot=await call<Snapshot>("snapshot");
+      if(ticket===snapshotRequest.current)setData(snapshot);
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(false);
     }
   }, []);
+  const [drafts] = useState(() => new NoteDrafts(localStorage, async (id,text) => {await call("save_note", {id,note:text});snapshotRequest.current++;setData(previous=>({...previous,projects:previous.projects.map(p=>p.id===id?{...p,note:text}:p)}));}, () => setDraftVersion(v=>v+1), refresh));
+  useEffect(() => {
+    const timer=setTimeout(() => {
+      for(const draft of Object.values(drafts.drafts)) {
+        if(data.projects.some(p=>p.id===draft.id) && !drafts.errors[draft.id]) void drafts.save(draft.id);
+      }
+    },700);
+    return () => clearTimeout(timer);
+  },[draftVersion,data.projects,drafts]);
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => void refresh(), 5000);
@@ -121,10 +133,9 @@ export default function App() {
   useEffect(() => {
     if (current && current.id !== selected) setSelected(current.id);
   }, [current?.id, selected]);
-  useEffect(() => {
-    setNote(current?.note || "");
-    setNoteDirty(false);
-  }, [current?.id, current?.note]);
+  const note = current ? drafts.drafts[current.id]?.text ?? current.note : "";
+  const noteDirty = Boolean(current && drafts.drafts[current.id]);
+  const noteStatus = current && drafts.errors[current.id] ? (drafts.storageError ? "Not saved — keep this window open. Retry or export a backup." : "Not saved — recovery draft kept. Retry saving or export a backup.") : current && drafts.isSaving(current.id) ? "Saving…" : noteDirty ? (drafts.storageError ? "Draft in memory · autosaving…" : "Recovery draft stored locally · autosaving…") : "Saved on this device";
   async function action(
     command: string,
     args: Record<string, unknown> = {},
@@ -134,6 +145,10 @@ export default function App() {
     setError("");
     try {
       const result = await call<unknown>(command, args);
+      if(command === "remove_root") {
+        const remaining=data.roots.filter(root=>root!==args.path);
+        for(const project of data.projects) if(!remaining.some(root=>project.id===root || project.id.startsWith(root+"/"))) drafts.discard(project.id);
+      }
       if (command === "open_project") { if (typeof result === "string") setToast(result); void refreshEditors(); }
       await refresh();
       if (message) setToast(message);
@@ -429,7 +444,7 @@ export default function App() {
                             </span>
                             <ChevronRight className="row-arrow" size={17} />
                           </button>
-                          <p className="resume-note">{p.note || "No next step yet. Leave yourself a starting point."}</p>
+                          <p className="resume-note">{(drafts.drafts[p.id]?.text ?? p.note) || "No next step yet. Leave yourself a starting point."}</p>
                           <div className="resume-actions">
                             <EditorActions editors={editors} disabled={busy || !p.available} onOpen={editorId => void action("open_project", {id: p.id, editor: true, editorId})} />
                             <button className="text-button" onClick={() => {setSelected(p.id); navigate("Projects"); setTab("Notes");}}>Next step</button>
@@ -466,7 +481,7 @@ export default function App() {
                       </span>
                       <h2>{current?.name || "Your next project"}</h2>
                       <p tabIndex={0} aria-label="Saved next step">
-                        {current?.note ||
+                        {(current && (drafts.drafts[current.id]?.text ?? current.note)) ||
                           "Leave a next-step note so you know where to begin."}
                       </p>
                       {current && (
@@ -648,23 +663,19 @@ export default function App() {
                                 value={note}
                                 maxLength={2000}
                                 onChange={(e) => {
-                                  setNote(e.target.value);
-                                  setNoteDirty(true);
+                                  drafts.update(current.id,e.target.value);
                                 }}
                                 placeholder="One small next step…"
                               />
+                              <p className="small" role="status">{noteStatus}</p>
+                              {current && drafts.errors[current.id] && <p role="alert" className="small">{drafts.errors[current.id]}</p>}
+                              {drafts.storageError && <p role="alert" className="small">{drafts.storageError}</p>}
                               <div className="note-actions">
                                 <span>{note.length}/2000</span>
                                 <button
                                   className="button primary"
-                                  disabled={busy || !noteDirty}
-                                  onClick={() =>
-                                    void action(
-                                      "save_note",
-                                      { id: current.id, note },
-                                      "Next step saved",
-                                    )
-                                  }
+                                  disabled={busy || !noteDirty || drafts.isSaving(current.id)}
+                                  onClick={() => void drafts.save(current.id)}
                                 >
                                   Save next step <Check size={16} />
                                 </button>
@@ -1017,6 +1028,11 @@ export default function App() {
                     </div>
                     <p className="small">Tokly does not upload source files or tracking data and has no cloud sync or telemetry. Git graph reads local metadata without fetching or changing repositories. Other editors, backup services and shared folders follow their own privacy settings.</p>
                     <p className="small">The local database is not encrypted by Tokly. Protect this Mac and be careful when sharing exports. Activity retention deletes old activity metadata; your saved notes remain until you remove them or their workspace.</p>
+                    <div className="setting-row"><div><strong>Back up your next steps</strong><p>Export saved notes and any pending recovery drafts as JSON. The file includes project names and paths; choose a private location. Import is not available yet.</p></div><button className="button secondary" disabled={busy} onClick={async () => {
+                      setBusy(true);setError("");
+                      try {const saved=await call<boolean>("export_notes", {drafts:Object.values(drafts.drafts)});if(saved)setToast("Note backup exported");}
+                      catch(e){setError(String(e));}finally{setBusy(false);}
+                    }}>Export note backup</button></div>
                     <div className="setting-row">
                       <div>
                         <label htmlFor="retention">
@@ -1070,6 +1086,7 @@ export default function App() {
                               message: "Clear this sample workspace?",
                             })
                           ) {
+                            for(const id of Object.keys(drafts.drafts))drafts.discard(id);
                             resetPreview();
                             void refresh();
                           }

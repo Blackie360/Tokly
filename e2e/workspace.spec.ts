@@ -29,7 +29,7 @@ test("next-step notes persist after reload", async ({ page }) => {
     .getByRole("textbox", { name: "Where will you pick up next?" })
     .fill("Ship the detector evaluation");
   await page.getByRole("button", { name: "Save next step" }).click();
-  await expect(page.getByRole("status")).toContainText("Next step saved");
+  await expect(page.getByText("Saved on this device",{exact:true})).toBeVisible();
   await page.reload();
   await expect(page.getByText("Ship the detector evaluation").first()).toBeVisible();
 });
@@ -244,4 +244,37 @@ test("workspace scan reports explain missing repositories and folder access", as
   await page.getByRole('button',{name:'Scan folders again',exact:true}).click();
   await expect(page.getByText('Folder access needed',{exact:true})).toBeVisible();
   await expect(page.getByText(/Tokly will not change permissions for you/)).toBeVisible();
+});
+
+test("note drafts recover after immediate reload and autosave after switching projects", async ({page}) => {
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  await page.getByRole('textbox',{name:'Where will you pick up next?'}).fill('Recovery survives a relaunch');
+  await page.reload();
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'Where will you pick up next?'})).toHaveValue('Recovery survives a relaunch');
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).projects[0].note)).toBe('Recovery survives a relaunch');
+  await page.getByRole('textbox',{name:'Where will you pick up next?'}).fill('Save this while I resume another project');
+  await page.getByRole('button',{name:'Piko Pi Agent',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('tokly-preview-v1')!).projects[0].note)).toBe('Save this while I resume another project');
+  await page.getByRole('button',{name:'Care Clarity',exact:true}).click();
+  await expect(page.getByRole('textbox',{name:'Where will you pick up next?'})).toHaveValue('Save this while I resume another project');
+});
+
+test("note export includes saved and recovery text without changing notes", async ({page}) => {
+  await page.getByRole('button',{name:/Projects 4/}).click();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  await page.getByRole('textbox',{name:'Where will you pick up next?'}).fill('Backup this pending thought');
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const downloadPromise=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Export note backup',exact:true}).click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toBe('Tokly-notes.json');
+  const stream=await download.createReadStream();const chunks=[];for await (const chunk of stream!)chunks.push(chunk);
+  const backup=JSON.parse(Buffer.concat(chunks).toString());
+  expect(backup.format).toBe('Tokly note backup');expect(backup.version).toBe(1);
+  const note=backup.notes.find((n:{name:string})=>n.name==='Care Clarity');
+  expect(note.recoveryDraft?.text || note.savedNote).toBe('Backup this pending thought');
+  await expect(page.getByText('Note backup exported',{exact:true})).toBeVisible();
 });

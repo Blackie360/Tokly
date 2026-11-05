@@ -42,6 +42,13 @@ export async function call<T = void>(
       throw new Error(
         "Folder access is available in the macOS desktop app. Use the sample workspace to explore this preview.",
       );
+    case "export_notes": {
+      const drafts=(args.drafts || []) as {id:string;text:string;updatedAt:number}[];
+      const notes=s.projects.map(p=>({projectId:p.id,name:p.name,savedNote:p.note,recoveryDraft:drafts.find(d=>d.id===p.id)||null}));
+      const orphaned=drafts.filter(d=>!s.projects.some(p=>p.id===d.id)).map(d=>({projectId:d.id,name:"Recovered draft (project no longer listed)",savedNote:null,recoveryDraft:d}));
+      const blob=new Blob([JSON.stringify({format:"Tokly note backup",version:1,exportedAt:Math.floor(Date.now()/1000),notes:[...notes,...orphaned]},null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download="Tokly-notes.json";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return true as T;
+    }
     case "save_note":
       s.projects = s.projects.map((p) =>
         p.id === args.id ? { ...p, note: String(args.note) } : p,

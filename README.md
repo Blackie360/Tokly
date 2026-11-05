@@ -87,3 +87,7 @@ flowchart TD
 Workspace settings report each approved folder's latest scan, repository count and incomplete/unavailable status, with explicit limits and recovery steps. Scanning never grants permissions or clones repositories. Paths, filenames, commit subjects and notes may be sensitive local data; Tokly's database is not application-encrypted. Protect the Mac and any exports. Other editors, backup services and shared folders have their own data policies.
 
 See [Mac distribution readiness](docs/RELEASE_READINESS.md) for the current signing, notarization and public-download blockers.
+
+Next-step notes keep a recovery draft in local webview storage on each edit, then autosave to SQLite after a short quiet period. Saves are serialized per project so an older reply cannot replace a newer edit; switching projects and reloading keep pending drafts. Save/storage errors remain visible with manual retry. Recovery storage and SQLite are local and not encrypted by Tokly. Removing a workspace also clears its affected recovery drafts, while excluded projects keep their notes.
+
+**Settings → Export note backup** saves a versioned JSON file with project names/paths, saved notes and pending recovery drafts kept separately (including drafts whose projects are no longer listed). Native export uses a save dialog and an atomic owner-only file write; cancellation does not write a file. Keep exports private, especially in cloud-synced folders. Exported files are independent of activity retention; there is no import UI yet.
