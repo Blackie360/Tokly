@@ -1,0 +1,11 @@
+{
+  "name": "tokly-website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node verify.mjs",
+    "test": "node verify.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
