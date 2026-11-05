@@ -113,6 +113,8 @@ impl Store {
         Ok(())
     }
     pub fn remove_root(&mut self, path: &str) -> Result<()> {
+        let normalized = Path::new(path).canonicalize().ok();
+        let path = normalized.as_ref().and_then(|p| p.to_str()).unwrap_or(path);
         let tx = self.db.transaction().map_err(err)?;
         tx.execute("DELETE FROM roots WHERE path=?", [path])
             .map_err(err)?;
@@ -588,6 +590,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let p = temp.path().join("project");
         std::fs::create_dir(&p).unwrap();
+        let p = p.canonicalize().unwrap();
         Repository::init(&p).unwrap();
         let s = Store::from_connection(Connection::open_in_memory().unwrap()).unwrap();
         (temp, s, p)
