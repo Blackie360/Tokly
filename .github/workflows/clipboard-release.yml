@@ -1,30 +1,58 @@
-name: Clipboard history release
-# Builds the universal Tokly clipboard app and attaches it to a GitHub release.
-# Start it by pushing a tag such as clipboard-v0.1.0, or by hand for a dry run.
+name: Release
+# Builds Tokly for macOS, Windows and Linux and attaches the files to a GitHub release.
+# Start it by pushing a tag such as clipboard-v0.1.0, or by hand for a dry run that
+# only uploads workflow artifacts.
 #
-# Signing and notarization happen only when these repository secrets exist:
+# The macOS build is signed and notarized only when these repository secrets exist:
 #   APPLE_CERTIFICATE            base64 of the Developer ID Application .p12
 #   APPLE_CERTIFICATE_PASSWORD   password of that .p12
 #   APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
 #   APPLE_ID, APPLE_PASSWORD     Apple ID and an app-specific password
 #   APPLE_TEAM_ID
-# Without them the build is ad-hoc signed and the release is marked as a pre-release.
+# Without them it is ad-hoc signed and the release is marked as a pre-release.
+# The Windows installer is not code-signed, so SmartScreen warns on first run.
 on:
   push:
     tags: ['clipboard-v*']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  release:
-    runs-on: macos-15
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal
+            os: macos-15
+            rust-targets: aarch64-apple-darwin, x86_64-apple-darwin
+            build-args: --target universal-apple-darwin --bundles app
+          - name: Windows x64
+            os: windows-latest
+            build-args: --bundles nsis
+          - name: Linux x64
+            os: ubuntu-24.04
+            build-args: --bundles deb
     env:
-      HAS_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
     defaults:
       run:
+        shell: bash
         working-directory: clipboard
     steps:
       - uses: actions/checkout@v5
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        # The Ubuntu mirror sometimes stalls for minutes; fail fast and retry instead of hanging.
+        timeout-minutes: 12
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          APT_OPTIONS: -o Acquire::Retries=4 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+        run: |
+          sudo apt-get $APT_OPTIONS update
+          sudo apt-get $APT_OPTIONS install -y --no-install-recommends libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libxkbcommon-dev libssl-dev build-essential file
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -32,7 +60,7 @@ jobs:
           cache-dependency-path: clipboard/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
+          targets: ${{ matrix.rust-targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: clipboard/src-tauri
@@ -47,8 +75,8 @@ jobs:
             exit 1
           fi
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
-      - name: Build, sign and notarize
-        if: env.HAS_SIGNING == 'true'
+      - name: Build, sign and notarize (macOS with a Developer ID)
+        if: runner.os == 'macOS' && env.HAS_APPLE_SIGNING == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -56,33 +84,53 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run tauri -- build --target universal-apple-darwin --bundles app
-      - name: Build without a Developer ID
-        if: env.HAS_SIGNING != 'true'
-        run: npm run tauri -- build --target universal-apple-darwin --bundles app --no-sign
-      - name: Package
-        id: package
+        run: npm run tauri -- build ${{ matrix.build-args }}
+      - name: Build
+        if: runner.os != 'macOS' || env.HAS_APPLE_SIGNING != 'true'
+        run: npm run tauri -- build ${{ matrix.build-args }} --no-sign
+      - name: Collect files
         run: |
-          zip="Tokly-${{ steps.version.outputs.version }}-universal.zip"
-          ditto -c -k --sequesterRsrc --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/Tokly.app "$zip"
-          shasum -a 256 "$zip" | tee "$zip.sha256"
-          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          version="${{ steps.version.outputs.version }}"
+          mkdir -p out
+          case "$RUNNER_OS" in
+            macOS)
+              ditto -c -k --sequesterRsrc --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/Tokly.app "out/Tokly-$version-macos-universal.zip" ;;
+            Windows)
+              cp src-tauri/target/release/bundle/nsis/*.exe "out/Tokly-$version-windows-x64-setup.exe" ;;
+            Linux)
+              cp src-tauri/target/release/bundle/deb/*.deb "out/Tokly-$version-linux-amd64.deb" ;;
+          esac
+          cd out
+          for file in *; do
+            if command -v sha256sum >/dev/null; then sha256sum "$file"; else shasum -a 256 "$file"; fi > "$file.sha256"
+            cat "$file.sha256"
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: Tokly-clipboard-${{ steps.version.outputs.version }}
-          path: |
-            clipboard/${{ steps.package.outputs.zip }}
-            clipboard/${{ steps.package.outputs.zip }}.sha256
-      - name: Publish the GitHub release
-        if: github.ref_type == 'tag'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          notes="Tokly clipboard history ${{ steps.version.outputs.version }} for macOS 12 or later (Apple Silicon and Intel)."
+          name: Tokly-${{ runner.os }}
+          path: clipboard/out/*
+          if-no-files-found: error
+  publish:
+    name: Publish the GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - run: |
+          version="${GITHUB_REF_NAME#clipboard-v}"
+          notes="Tokly $version for macOS 12 or later (Apple Silicon and Intel), Windows 10 or later (x64) and Linux (amd64 .deb). The Windows installer is not code-signed."
           flags=""
-          if [ "$HAS_SIGNING" != "true" ]; then
-            notes="$notes Not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings."
+          if [ "$HAS_APPLE_SIGNING" != "true" ]; then
+            notes="$notes The macOS app is not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings."
             flags="--prerelease"
           fi
-          gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" "${{ steps.package.outputs.zip }}.sha256" \
-            --title "Tokly clipboard history ${{ steps.version.outputs.version }}" --notes "$notes" $flags
+          gh release create "$GITHUB_REF_NAME" files/* --repo "$GITHUB_REPOSITORY" --title "Tokly $version" --notes "$notes" $flags

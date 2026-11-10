@@ -41,6 +41,12 @@ pub struct Settings {
     pub suppress_clear_alert: bool,
 }
 
+/// ⇧⌘C on macOS. Elsewhere Ctrl+Shift+C is taken by terminals and browsers, so Alt+Shift+C.
+#[cfg(target_os = "macos")]
+pub const DEFAULT_HOTKEY: &str = "Command+Shift+C";
+#[cfg(not(target_os = "macos"))]
+pub const DEFAULT_HOTKEY: &str = "Alt+Shift+C";
+
 pub fn default_ignored_types() -> Vec<String> {
     [
         "Pasteboard generator type",
@@ -57,7 +63,7 @@ pub fn default_ignored_types() -> Vec<String> {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            hotkey: "Command+Shift+C".into(),
+            hotkey: DEFAULT_HOTKEY.into(),
             launch_at_login: false,
             search_mode: "exact".into(),
             paste_by_default: false,
@@ -121,7 +127,7 @@ mod tests {
     fn missing_or_broken_file_gives_defaults() {
         let dir = temp();
         let path = dir.join("settings.json");
-        assert_eq!(Settings::load(&path).hotkey, "Command+Shift+C");
+        assert_eq!(Settings::load(&path).hotkey, DEFAULT_HOTKEY);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(&path, b"{ not json").unwrap();
         let loaded = Settings::load(&path);

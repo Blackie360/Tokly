@@ -45,7 +45,7 @@
           <label><input type="checkbox" data-key="pasteByDefault"> Paste automatically</label>
           <label><input type="checkbox" data-key="removeFormattingByDefault"> Paste without formatting</label>
           <p class="hint" id="modifier-hint"></p>
-          <p class="hint">Pasting needs the Accessibility permission; macOS asks the first time.</p>
+          <p class="hint mac-only">Pasting needs the Accessibility permission; macOS asks the first time.</p>
         </div>
       </div>
       <hr>
@@ -61,8 +61,8 @@
           <label><input type="checkbox" data-key="saveImages"> Images</label>
           <label><input type="checkbox" data-key="saveFiles"> Files</label>
           <p class="hint">Which kinds of copied content are stored.</p>
-          <label><input type="checkbox" data-key="captureScreenshots"> Screenshots, as soon as they are taken</label>
-          <p class="hint">Adds every screenshot macOS saves to your screenshot folder, without copying it first.
+          <label class="mac-only"><input type="checkbox" data-key="captureScreenshots"> Screenshots, as soon as they are taken</label>
+          <p class="hint mac-only">Adds every screenshot macOS saves to your screenshot folder, without copying it first.
             Needs Images to be on, and access to that folder (macOS asks once).</p>
         </div>
       </div>
@@ -189,6 +189,7 @@
   </div>
 
   <div id="status" role="status"></div>
+  <script src="platform.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>
