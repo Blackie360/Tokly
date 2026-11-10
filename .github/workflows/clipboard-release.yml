@@ -1,0 +1,88 @@
+name: Clipboard history release
+# Builds the universal Tokly clipboard app and attaches it to a GitHub release.
+# Start it by pushing a tag such as clipboard-v0.1.0, or by hand for a dry run.
+#
+# Signing and notarization happen only when these repository secrets exist:
+#   APPLE_CERTIFICATE            base64 of the Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD   password of that .p12
+#   APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
+#   APPLE_ID, APPLE_PASSWORD     Apple ID and an app-specific password
+#   APPLE_TEAM_ID
+# Without them the build is ad-hoc signed and the release is marked as a pre-release.
+on:
+  push:
+    tags: ['clipboard-v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      HAS_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    defaults:
+      run:
+        working-directory: clipboard
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clipboard/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clipboard/src-tauri
+      - run: npm ci
+      - name: Read version and check it matches the tag
+        id: version
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "clipboard-v$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $version" >&2
+            exit 1
+          fi
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - name: Build, sign and notarize
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run tauri -- build --target universal-apple-darwin --bundles app
+      - name: Build without a Developer ID
+        if: env.HAS_SIGNING != 'true'
+        run: npm run tauri -- build --target universal-apple-darwin --bundles app --no-sign
+      - name: Package
+        id: package
+        run: |
+          zip="Tokly-${{ steps.version.outputs.version }}-universal.zip"
+          ditto -c -k --sequesterRsrc --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/Tokly.app "$zip"
+          shasum -a 256 "$zip" | tee "$zip.sha256"
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tokly-clipboard-${{ steps.version.outputs.version }}
+          path: |
+            clipboard/${{ steps.package.outputs.zip }}
+            clipboard/${{ steps.package.outputs.zip }}.sha256
+      - name: Publish the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Tokly clipboard history ${{ steps.version.outputs.version }} for macOS 12 or later (Apple Silicon and Intel)."
+          flags=""
+          if [ "$HAS_SIGNING" != "true" ]; then
+            notes="$notes Not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings."
+            flags="--prerelease"
+          fi
+          gh release create "$GITHUB_REF_NAME" "${{ steps.package.outputs.zip }}" "${{ steps.package.outputs.zip }}.sha256" \
+            --title "Tokly clipboard history ${{ steps.version.outputs.version }}" --notes "$notes" $flags

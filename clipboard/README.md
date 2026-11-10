@@ -18,6 +18,17 @@ npm test           # Rust unit tests
 `cargo test -- --include-ignored` (in `src-tauri`) also runs the clipboard round-trip test, which
 briefly replaces the real clipboard and then restores it.
 
+CI (`.github/workflows/ci.yml`) runs the format check, clippy, the tests and an unsigned universal
+build on every pull request.
+
+## Release
+
+Push a tag named `clipboard-v<version>` matching `src-tauri/tauri.conf.json` to run
+`.github/workflows/clipboard-release.yml`. It builds a universal app, zips it with its SHA-256 and
+creates a GitHub release. With the Apple signing secrets listed in that workflow it signs and
+notarizes; without them the release is an unsigned pre-release. `packaging/tokly.rb` is the Homebrew
+cask to publish in a public tap once a signed build is downloadable without signing in.
+
 ## Use
 
 - **⇧⌘C** opens the history (changeable in Preferences). Clicking the menu bar icon or opening the
@@ -40,7 +51,8 @@ briefly replaces the real clipboard and then restores it.
 - `src-tauri/src/platform.rs` — NSPasteboard, frontmost app, ⌘V posting
 - `src-tauri/src/main.rs` — commands, tray, global shortcut, popup placement, clipboard watcher
 - `ui/` — popup (`index.html`, `popup.js`) and preferences (`settings.html`, `settings.js`)
-- History: `~/Library/Application Support/com.blackielabs.tokly.clipboard/history`
+- History: `~/Library/Application Support/com.blackielabs.tokly.clipboard/history` (plain files, folder
+  readable only by your account)
 - Settings: `~/Library/Application Support/com.blackielabs.tokly.clipboard/settings.json`
 
 `TOKLY_KEEP_OPEN=1` keeps the popup up after it loses focus; `--preferences` opens the
