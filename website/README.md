@@ -1,6 +1,6 @@
 # Tokly website
 
-Static marketing website for Tokly clipboard history, the menu bar clipboard manager in `clipboard/`. All website source and deployment files live here. It replaces the earlier Return Desk page for the project tracker, which remains in Git history.
+Static marketing website for Tokly clipboard history, the menu bar clipboard manager in `clipboard/`. All website source and deployment files live here.
 
 ## Validate
 
