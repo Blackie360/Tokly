@@ -9,8 +9,10 @@ name: Release
 #   APPLE_SIGNING_IDENTITY       e.g. "Developer ID Application: Name (TEAMID)"
 #   APPLE_ID, APPLE_PASSWORD     Apple ID and an app-specific password
 #   APPLE_TEAM_ID
-# Without them it is ad-hoc signed and the release is marked as a pre-release.
+# Without them it is ad-hoc signed, and the release notes say so.
 # The Windows installer is not code-signed, so SmartScreen warns on first run.
+# After publishing, the install scripts served by the website are run against the
+# new release on Linux and Windows.
 on:
   push:
     tags: ['clipboard-v*']
@@ -127,10 +129,47 @@ jobs:
           merge-multiple: true
       - run: |
           version="${GITHUB_REF_NAME#clipboard-v}"
-          notes="Tokly $version for macOS 12 or later (Apple Silicon and Intel), Windows 10 or later (x64) and Linux (amd64 .deb). The Windows installer is not code-signed."
-          flags=""
-          if [ "$HAS_APPLE_SIGNING" != "true" ]; then
-            notes="$notes The macOS app is not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings."
-            flags="--prerelease"
-          fi
-          gh release create "$GITHUB_REF_NAME" files/* --repo "$GITHUB_REPOSITORY" --title "Tokly $version" --notes "$notes" $flags
+          {
+            echo "Tokly $version, a clipboard history for the menu bar and system tray."
+            echo
+            echo "## Install"
+            echo
+            echo "- **Windows 10 or later (x64):** \`irm https://tokly.blackielabs.com/install.ps1 | iex\` in PowerShell, or run \`Tokly-$version-windows-x64-setup.exe\`."
+            echo "- **Linux (Debian, Ubuntu, amd64):** \`curl -fsSL https://tokly.blackielabs.com/install.sh | sh\`, or install \`Tokly-$version-linux-amd64.deb\`."
+            echo "- **macOS 12 or later (Apple Silicon and Intel):** unzip \`Tokly-$version-macos-universal.zip\` and move Tokly to Applications."
+            echo
+            echo "## Good to know"
+            echo
+            echo "- Windows and Linux are early builds: installed and started in automated tests, not yet on many real machines."
+            echo "- The Windows installer is not code-signed, so SmartScreen may warn."
+            if [ "$HAS_APPLE_SIGNING" != "true" ]; then
+              echo "- The macOS app is not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings, Privacy and Security."
+            fi
+            echo "- Linux cannot yet skip copies that password managers mark as concealed."
+            echo "- Each file has a \`.sha256\` beside it."
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" files/* --repo "$GITHUB_REPOSITORY" --title "Tokly $version" --notes-file notes.md --latest
+  verify-install:
+    name: Install from the published release (${{ matrix.os }})
+    needs: publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run install.sh
+        if: runner.os == 'Linux'
+        run: |
+          sh website/public/install.sh
+          command -v tokly
+          dpkg -s tokly | grep -E '^(Package|Version|Status)'
+      - name: Run install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./website/public/install.ps1
+          $exe = Join-Path $env:LOCALAPPDATA 'Tokly\tokly.exe'
+          if (-not (Test-Path $exe)) { throw "Not installed at $exe" }
+          Write-Host "Installed: $exe"

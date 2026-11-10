@@ -21,7 +21,7 @@ CI runs the same checks and an unsigned build for macOS, Windows and Linux on ev
 
 ## Release state
 
-Version 0.1.0 is an early build. The macOS app is not yet signed with a Developer ID or notarized, and the Homebrew cask is not published. The Windows and Linux builds compile and pass their tests in CI but have not been run on real machines yet. See the release section of `clipboard/README.md`.
+Version 0.1.0 is an early build. The macOS app is not yet signed with a Developer ID or notarized, and the Homebrew cask is not published. Windows and Linux are early builds with install commands on the website; CI installs and starts them, but they have not been used on real machines yet. See the release section of `clipboard/README.md`.
 
 ## History
 
