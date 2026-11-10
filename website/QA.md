@@ -4,18 +4,18 @@ Reviewed 10 November 2026. Targeted engineering checks, not an accessibility cer
 
 ## Automated
 
-- `node website/verify.mjs`: unique IDs, internal links and ARIA references, local assets, canonical URL, demo and release labels, reduced-motion and focus hooks, buttons disabled until the script runs, no networking, storage or clipboard reads, no third-party URLs, JavaScript syntax and the 60KB budget (currently about 35KB uncompressed).
-- `test-interactions.mjs`: runs the shipped script without a DOM and checks adding, de-duplication, the size limit, pin letters and ordering, delete, reset, search, hex detection and match highlighting.
+- `npm run build`: TypeScript check, Vite build, then `verify.mjs` (required wording, release flag, no networking or storage in site code, no third-party loads, reduced-motion and listbox hooks, 330 KB compressed budget; currently about 272 KB).
+- `test-interactions.mjs`: adding, de-duplication, the size limit, pin letters and ordering, delete, reset, search, hex detection and match highlighting.
+- `npx astryx doctor --built dist`: all checks passed.
 
 ## Browser
 
-Headless Chromium through Playwright, loading `public/index.html` from disk:
+Headless Chromium through Playwright against `vite preview`:
 
-- No horizontal overflow at 320, 390, 768 and 1280 CSS pixels. Desktop and 390px full-page screenshots reviewed.
-- Demo: sample copy, multi-line item, search with highlighting, return to pick, arrow keys, ⌥P pin with divider and letter, ⌥⌫ delete, empty state, Escape, row click, Pin and Reset buttons. No console or page errors.
-- "Copy command" wrote the Homebrew command to the clipboard with permission granted.
-- With JavaScript disabled, the static history shows five rows and all eight buttons are disabled.
+- No horizontal overflow at 390 and 1320 CSS pixels. Desktop full-page screenshot reviewed.
+- Demo: sample copy, multi-line item, search with highlighting, return to pick, arrow keys, Alt+P pin, Alt+Backspace delete, empty state, Reset, and opening an FAQ entry. No console or page errors.
+- No request left `localhost` during the session, confirming fonts and styles are bundled.
 
 ## Not checked
 
-Safari and Firefox, screen readers, physical phones, OS-level reduced-motion emulation, measured contrast ratios, the clipboard fallback path when permission is denied, and the deployed site. The page has not been published.
+Safari and Firefox, screen readers, physical phones, light mode (the site is fixed to the dark theme), OS-level reduced-motion emulation, measured contrast ratios, and the install command's copy button.

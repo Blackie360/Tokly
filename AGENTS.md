@@ -4,7 +4,8 @@ Tokly is a clipboard history for the macOS menu bar and the Windows and Linux sy
 
 - App: `clipboard/`. Tauri 2, Rust backend in `clipboard/src-tauri`, plain HTML/CSS/JS in `clipboard/ui/`. Bundle identifier `com.blackielabs.tokly.clipboard`.
 - Operating-system code lives only in `clipboard/src-tauri/src/platform/` (`macos.rs`, and `desktop.rs` for Windows and Linux). Both expose the same functions; keep `cfg` switches out of the rest of the code where possible.
-- Website: `website/`, a static page deployed by Vercel to tokly.blackielabs.com from the `website` root directory.
+- Website: `website/`, a React app built with the Astryx design system and Vite, deployed by Vercel to tokly.blackielabs.com from the `website` root directory. Read `website/AGENTS.md` (Astryx's agent guide) before changing its layout.
+- The app and the website share one look: warm paper or dark brown surfaces, the ember gradient from the app icon (`#fa9e33` to `#e64554`), and key hints drawn as keycaps. The app keeps system fonts and has no build step.
 
 ## Rules
 
@@ -19,7 +20,7 @@ Tokly is a clipboard history for the macOS menu bar and the Windows and Linux sy
 ## Before delivery
 
 - In `clipboard/src-tauri`: `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D warnings` and `cargo test --locked`.
-- For website changes: `node website/verify.mjs`.
+- For website changes: `npm run build` in `website/` (type-check, build and `verify.mjs`).
 - CI must stay green on macOS, Windows and Linux. A change that only compiles on one system is not done.
 - Do not describe the Windows or Linux build as tested until someone has run it on a real machine; say what was and was not checked.
 - Releases go through `.github/workflows/clipboard-release.yml`.

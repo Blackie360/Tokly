@@ -1,11 +1,35 @@
 {
   "name": "tokly-website",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node verify.mjs",
-    "test": "node verify.mjs"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node verify.mjs",
+    "preview": "vite preview",
+    "test": "node test-interactions.mjs"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "^0.7.12",
+    "@astryxdesign/theme-chocolate": "^0.7.12",
+    "@astryxdesign/theme-gothic": "^0.7.12",
+    "@astryxdesign/theme-neutral": "^0.7.12",
+    "@fontsource-variable/albert-sans": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@stylexjs/stylex": "^0.19.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@astryxdesign/cli": "^0.7.12",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7"
+  }
 }
