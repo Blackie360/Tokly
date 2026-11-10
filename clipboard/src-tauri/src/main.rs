@@ -712,21 +712,25 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building Tokly")
-        .run(|app, event| match event {
-            // Closing the preferences window must not quit the menu bar app.
-            tauri::RunEvent::ExitRequested {
-                code: None, api, ..
-            } => api.prevent_exit(),
-            // Opening the app again while it runs (Finder, Spotlight, `open`) shows the history.
-            #[cfg(target_os = "macos")]
-            tauri::RunEvent::Reopen { .. } => {
-                let popup_open = app
-                    .get_webview_window("popup")
-                    .is_some_and(|window| window.is_visible().unwrap_or(false));
-                if !popup_open {
-                    toggle_popup(app, false);
+        // Only the macOS Reopen handler below needs the app handle.
+        .run(
+            |#[cfg_attr(not(target_os = "macos"), allow(unused_variables))] app, event| match event
+            {
+                // Closing the preferences window must not quit the menu bar app.
+                tauri::RunEvent::ExitRequested {
+                    code: None, api, ..
+                } => api.prevent_exit(),
+                // Opening the app again while it runs (Finder, Spotlight, `open`) shows the history.
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    let popup_open = app
+                        .get_webview_window("popup")
+                        .is_some_and(|window| window.is_visible().unwrap_or(false));
+                    if !popup_open {
+                        toggle_popup(app, false);
+                    }
                 }
-            }
-            _ => {}
-        });
+                _ => {}
+            },
+        );
 }
