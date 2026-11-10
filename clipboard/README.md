@@ -26,6 +26,9 @@ briefly replaces the real clipboard and then restores it.
   without formatting. **⌘1–9** picks an item directly.
 - **⌥P** pins or unpins; pins get a letter and are picked with **⌘ + letter**. **⌥⌫** deletes,
   **⌥⌘⌫** clears unpinned items (add **⇧** to clear pins too).
+- Screenshots that macOS saves to your screenshot folder are added automatically, without copying
+  them first (Preferences → Storage). macOS asks once for access to that folder. HEIC and PDF
+  screenshots are skipped.
 - **⌥-click** the menu bar icon to pause capturing, **⌥⇧-click** to ignore only the next copy.
 - Pasting needs the Accessibility permission. The app is ad-hoc signed, so macOS asks again after
   each rebuild.
@@ -33,6 +36,7 @@ briefly replaces the real clipboard and then restores it.
 ## Where things live
 
 - `src-tauri/src/history.rs` — store, de-duplication, limits, pins, search (with tests)
+- `src-tauri/src/screenshots.rs` — notices new screenshot files by their macOS screenshot tag (with tests)
 - `src-tauri/src/platform.rs` — NSPasteboard, frontmost app, ⌘V posting
 - `src-tauri/src/main.rs` — commands, tray, global shortcut, popup placement, clipboard watcher
 - `ui/` — popup (`index.html`, `popup.js`) and preferences (`settings.html`, `settings.js`)

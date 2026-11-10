@@ -15,6 +15,8 @@ pub struct Settings {
     pub save_text: bool,
     pub save_images: bool,
     pub save_files: bool,
+    /// Add screenshots that macOS saves to disk to the history.
+    pub capture_screenshots: bool,
 
     pub popup_position: String,
     pub pin_to: String,
@@ -65,6 +67,7 @@ impl Default for Settings {
             save_text: true,
             save_images: true,
             save_files: true,
+            capture_screenshots: true,
             popup_position: "cursor".into(),
             pin_to: "top".into(),
             image_max_height: 40,

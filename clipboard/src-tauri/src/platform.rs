@@ -49,7 +49,9 @@ unsafe fn array_items(array: Id) -> Vec<Id> {
         return vec![];
     }
     let count: usize = msg_send![array, count];
-    (0..count).map(|i| msg_send![array, objectAtIndex: i]).collect()
+    (0..count)
+        .map(|i| msg_send![array, objectAtIndex: i])
+        .collect()
 }
 
 unsafe fn pasteboard() -> Id {
@@ -64,7 +66,10 @@ pub fn change_count() -> isize {
 pub fn pasteboard_types() -> Vec<String> {
     autoreleasepool(|_| unsafe {
         let types: Id = msg_send![pasteboard(), types];
-        array_items(types).into_iter().filter_map(|t| to_string(t)).collect()
+        array_items(types)
+            .into_iter()
+            .filter_map(|t| to_string(t))
+            .collect()
     })
 }
 
@@ -99,7 +104,8 @@ pub fn write(contents: &[Raw]) -> isize {
 
         let urls: Id = msg_send![class!(NSMutableArray), array];
         for (_, data) in contents.iter().filter(|c| c.0 == FILE_URL) {
-            let url: Id = msg_send![class!(NSURL), URLWithString: ns_string(&String::from_utf8_lossy(data))];
+            let url: Id =
+                msg_send![class!(NSURL), URLWithString: ns_string(&String::from_utf8_lossy(data))];
             if !url.is_null() {
                 let _: () = msg_send![urls, addObject: url];
             }
@@ -149,14 +155,19 @@ pub fn frontmost() -> Option<FrontApp> {
         let pid: i32 = msg_send![app, processIdentifier];
         let bundle_id: Id = msg_send![app, bundleIdentifier];
         let name: Id = msg_send![app, localizedName];
-        Some(FrontApp { pid, bundle_id: to_string(bundle_id), name: to_string(name) })
+        Some(FrontApp {
+            pid,
+            bundle_id: to_string(bundle_id),
+            name: to_string(name),
+        })
     })
 }
 
 /// Gives keyboard focus back to another app.
 pub fn activate(pid: i32) {
     autoreleasepool(|_| unsafe {
-        let app: Id = msg_send![class!(NSRunningApplication), runningApplicationWithProcessIdentifier: pid];
+        let app: Id =
+            msg_send![class!(NSRunningApplication), runningApplicationWithProcessIdentifier: pid];
         if !app.is_null() {
             let _: bool = msg_send![app, activateWithOptions: 0usize];
         }

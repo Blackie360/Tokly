@@ -4,5 +4,11 @@
 <dict>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Tokly adds new screenshots saved on your Desktop to your clipboard history.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Tokly adds new screenshots saved in your Documents folder to your clipboard history.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Tokly adds new screenshots saved in your Downloads folder to your clipboard history.</string>
 </dict>
 </plist>

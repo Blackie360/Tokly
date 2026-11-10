@@ -164,7 +164,8 @@ async function loadThumbnail(id, holder, label) {
     source = await invoke("thumbnail", { id });
     thumbnails.set(id, source);
   }
-  if (!source || !holder.isConnected) return;
+  // The holder may not be in the list yet (cached thumbnails resolve immediately); filling it is still right.
+  if (!source) return;
   const image = document.createElement("img");
   image.src = source;
   image.alt = label;

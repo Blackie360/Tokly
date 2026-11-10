@@ -67,7 +67,10 @@ impl History {
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
-        History { dir: dir.to_path_buf(), items }
+        History {
+            dir: dir.to_path_buf(),
+            items,
+        }
     }
 
     fn blob(&self, file: &str) -> PathBuf {
@@ -93,7 +96,13 @@ impl History {
     }
 
     /// Records a copy. Identical contents bump the existing item instead of adding a new one.
-    pub fn add(&mut self, raw: Vec<Raw>, application: Option<String>, limit: usize, at: f64) -> Option<String> {
+    pub fn add(
+        &mut self,
+        raw: Vec<Raw>,
+        application: Option<String>,
+        limit: usize,
+        at: f64,
+    ) -> Option<String> {
         if raw.is_empty() {
             return None;
         }
@@ -129,7 +138,10 @@ impl History {
         };
 
         if kind == "image" {
-            let source = raw.iter().find(|r| r.0 == PNG).or_else(|| raw.iter().find(|r| r.0 == TIFF));
+            let source = raw
+                .iter()
+                .find(|r| r.0 == PNG)
+                .or_else(|| raw.iter().find(|r| r.0 == TIFF));
             if let Some(image) = source.and_then(|r| image::load_from_memory(&r.1).ok()) {
                 item.width = Some(image.width());
                 item.height = Some(image.height());
@@ -147,7 +159,10 @@ impl History {
         for (n, (kind, data)) in raw.iter().enumerate() {
             let file = format!("{id}-{n}");
             if std::fs::write(self.blob(&file), data).is_ok() {
-                item.contents.push(Content { kind: kind.clone(), file });
+                item.contents.push(Content {
+                    kind: kind.clone(),
+                    file,
+                });
             }
         }
         if item.contents.is_empty() {
@@ -164,10 +179,16 @@ impl History {
     }
 
     pub fn read_contents(&self, id: &str) -> Vec<Raw> {
-        let Some(item) = self.get(id) else { return vec![] };
+        let Some(item) = self.get(id) else {
+            return vec![];
+        };
         item.contents
             .iter()
-            .filter_map(|c| std::fs::read(self.blob(&c.file)).ok().map(|d| (c.kind.clone(), d)))
+            .filter_map(|c| {
+                std::fs::read(self.blob(&c.file))
+                    .ok()
+                    .map(|d| (c.kind.clone(), d))
+            })
             .collect()
     }
 
@@ -205,11 +226,16 @@ impl History {
 
     pub fn toggle_pin(&mut self, id: &str, limit: usize) {
         let used: HashSet<String> = self.items.iter().filter_map(|i| i.pin.clone()).collect();
-        let Some(item) = self.items.iter_mut().find(|i| i.id == id) else { return };
+        let Some(item) = self.items.iter_mut().find(|i| i.id == id) else {
+            return;
+        };
         if item.pin.is_some() {
             item.pin = None;
         } else {
-            let free = PIN_KEYS.chars().map(|c| c.to_string()).find(|k| !used.contains(k));
+            let free = PIN_KEYS
+                .chars()
+                .map(|c| c.to_string())
+                .find(|k| !used.contains(k));
             let Some(free) = free else { return };
             item.pin = Some(free);
         }
@@ -230,8 +256,9 @@ impl History {
         }
         unpinned.sort_by(|a, b| b.0.total_cmp(&a.0));
         let doomed: HashSet<String> = unpinned.into_iter().skip(limit).map(|p| p.1).collect();
-        let (gone, kept): (Vec<Item>, Vec<Item>) =
-            std::mem::take(&mut self.items).into_iter().partition(|i| doomed.contains(&i.id));
+        let (gone, kept): (Vec<Item>, Vec<Item>) = std::mem::take(&mut self.items)
+            .into_iter()
+            .partition(|i| doomed.contains(&i.id));
         for item in &gone {
             self.remove_blobs(item);
         }
@@ -268,7 +295,9 @@ impl History {
                     .sum::<u64>()
             })
             .unwrap_or(0);
-        let index = std::fs::metadata(self.dir.join("index.json")).map(|m| m.len()).unwrap_or(0);
+        let index = std::fs::metadata(self.dir.join("index.json"))
+            .map(|m| m.len())
+            .unwrap_or(0);
         blobs + index
     }
 }
@@ -280,7 +309,11 @@ pub fn hash(raw: &[Raw]) -> String {
         hasher.update([0u8]);
         hasher.update(data);
     }
-    hasher.finalize().iter().map(|b| format!("{b:02x}")).collect()
+    hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Returns the item kind, its list title and its searchable text.
@@ -298,7 +331,11 @@ pub fn describe(raw: &[Raw]) -> (&'static str, String, Option<String>) {
             .collect();
         return ("file", names.join(", "), Some(files.join("\n")));
     }
-    if let Some(text) = raw.iter().find(|r| r.0 == STRING).map(|r| String::from_utf8_lossy(&r.1).to_string()) {
+    if let Some(text) = raw
+        .iter()
+        .find(|r| r.0 == STRING)
+        .map(|r| String::from_utf8_lossy(&r.1).to_string())
+    {
         if !text.is_empty() {
             let title: String = text.chars().take(500).collect();
             let body: String = text.chars().take(20_000).collect();
@@ -316,7 +353,11 @@ fn percent_decode(input: &str) -> String {
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len() && input.is_char_boundary(i + 1) && input.is_char_boundary(i + 3) {
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && input.is_char_boundary(i + 1)
+            && input.is_char_boundary(i + 3)
+        {
             if let Ok(value) = u8::from_str_radix(&input[i + 1..i + 3], 16) {
                 out.push(value);
                 i += 3;
@@ -337,15 +378,23 @@ pub fn search<'a>(query: &str, items: Vec<&'a Item>, mode: &str) -> Vec<&'a Item
         return items;
     }
     match mode {
-        "regexp" => match regex::RegexBuilder::new(query).case_insensitive(true).build() {
-            Ok(re) => items.into_iter().filter(|i| re.is_match(i.search_text())).collect(),
+        "regexp" => match regex::RegexBuilder::new(query)
+            .case_insensitive(true)
+            .build()
+        {
+            Ok(re) => items
+                .into_iter()
+                .filter(|i| re.is_match(i.search_text()))
+                .collect(),
             Err(_) => vec![],
         },
         "fuzzy" => {
             let mut scored: Vec<(usize, f64, &Item)> = items
                 .into_iter()
                 .enumerate()
-                .filter_map(|(n, item)| fuzzy_score(query, item.search_text()).map(|s| (n, s, item)))
+                .filter_map(|(n, item)| {
+                    fuzzy_score(query, item.search_text()).map(|s| (n, s, item))
+                })
                 .collect();
             scored.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
             scored.into_iter().map(|s| s.2).collect()
@@ -376,7 +425,12 @@ pub fn fuzzy_score(query: &str, text: &str) -> Option<f64> {
         return None;
     }
     let (mut score, mut n, mut previous) = (0.0, 0usize, usize::MAX);
-    for (i, ch) in text.chars().take(2000).flat_map(|c| c.to_lowercase()).enumerate() {
+    for (i, ch) in text
+        .chars()
+        .take(2000)
+        .flat_map(|c| c.to_lowercase())
+        .enumerate()
+    {
         if n < needle.len() && ch == needle[n] {
             score += 1.0;
             if previous != usize::MAX && i == previous + 1 {
@@ -434,7 +488,11 @@ mod tests {
         h.add(text("two"), None, 2, 2.0);
         h.add(text("three"), None, 2, 3.0);
         h.add(text("four"), None, 2, 4.0);
-        let titles: Vec<&str> = h.unpinned("lastCopiedAt").iter().map(|i| i.title.as_str()).collect();
+        let titles: Vec<&str> = h
+            .unpinned("lastCopiedAt")
+            .iter()
+            .map(|i| i.title.as_str())
+            .collect();
         assert_eq!(titles, ["four", "three"]);
         assert_eq!(h.pinned().len(), 1);
         // Blobs of the trimmed item are gone: one per remaining item.
@@ -447,7 +505,10 @@ mod tests {
         let id = {
             let mut h = History::load(&dir);
             h.add(
-                vec![(STRING.into(), b"rich".to_vec()), (RTF.into(), b"{\\rtf1 rich}".to_vec())],
+                vec![
+                    (STRING.into(), b"rich".to_vec()),
+                    (RTF.into(), b"{\\rtf1 rich}".to_vec()),
+                ],
                 None,
                 10,
                 1.0,
@@ -490,8 +551,12 @@ mod tests {
         let dir = temp();
         let mut h = History::load(&dir);
         let mut png = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::new_rgba8(300, 200).write_to(&mut png, image::ImageFormat::Png).unwrap();
-        let id = h.add(vec![(PNG.into(), png.into_inner())], None, 10, 1.0).unwrap();
+        image::DynamicImage::new_rgba8(300, 200)
+            .write_to(&mut png, image::ImageFormat::Png)
+            .unwrap();
+        let id = h
+            .add(vec![(PNG.into(), png.into_inner())], None, 10, 1.0)
+            .unwrap();
         let item = h.get(&id).unwrap();
         assert_eq!((item.width, item.height), (Some(300), Some(200)));
         assert!(h.thumbnail(&id).is_some());
@@ -512,7 +577,10 @@ mod tests {
         assert!(search("#\\d{4}", all(), "exact").is_empty());
         assert!(search("(", all(), "regexp").is_empty());
         // "Hello World" ranks first: its "wo" is consecutive.
-        assert_eq!(titles(search("hwo", all(), "fuzzy")), ["Hello World", "how are you"]);
+        assert_eq!(
+            titles(search("hwo", all(), "fuzzy")),
+            ["Hello World", "how are you"]
+        );
         assert_eq!(titles(search("hlwd", all(), "mixed")), ["Hello World"]);
         assert_eq!(search("", all(), "exact").len(), 3);
         assert!(fuzzy_score("xyz", "hello").is_none());

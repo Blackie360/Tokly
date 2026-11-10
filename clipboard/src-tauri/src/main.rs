@@ -1,5 +1,6 @@
 mod history;
 mod platform;
+mod screenshots;
 mod settings;
 
 use base64::Engine;
@@ -12,7 +13,10 @@ use std::sync::{mpsc, Mutex};
 use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindowBuilder, WindowEvent, Wry};
+use tauri::{
+    AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent, Wry,
+};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -63,7 +67,11 @@ fn list_items(state: State<AppState>, query: String) -> Vec<Row> {
     let settings = state.settings();
     let history = state.history.lock().unwrap();
     let pinned = history::search(&query, history.pinned(), &settings.search_mode);
-    let unpinned = history::search(&query, history.unpinned(&settings.sort_by), &settings.search_mode);
+    let unpinned = history::search(
+        &query,
+        history.unpinned(&settings.sort_by),
+        &settings.search_mode,
+    );
     let ordered = if settings.pin_to == "bottom" {
         unpinned.into_iter().chain(pinned)
     } else {
@@ -89,7 +97,10 @@ fn list_items(state: State<AppState>, query: String) -> Vec<Row> {
 #[tauri::command]
 fn thumbnail(state: State<AppState>, id: String) -> Option<String> {
     let bytes = state.history.lock().unwrap().thumbnail(&id)?;
-    Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
 }
 
 /// Puts an item back on the clipboard and optionally pastes it into the previous app.
@@ -102,7 +113,9 @@ fn select_item(app: AppHandle, state: State<AppState>, id: String, paste: bool, 
     if plain && contents.iter().any(|c| c.0 == STRING) {
         contents.retain(|c| c.0 == STRING);
     }
-    state.change_count.store(platform::write(&contents), Ordering::SeqCst);
+    state
+        .change_count
+        .store(platform::write(&contents), Ordering::SeqCst);
     state.history.lock().unwrap().touch(&id, history::now());
     close_popup(&app, true);
     history_changed(&app);
@@ -133,7 +146,9 @@ fn toggle_pin(app: AppHandle, state: State<AppState>, id: String) {
 fn clear_history(app: AppHandle, state: State<AppState>, all: bool) {
     state.history.lock().unwrap().clear(all);
     if state.settings().clear_system_clipboard {
-        state.change_count.store(platform::clear(), Ordering::SeqCst);
+        state
+            .change_count
+            .store(platform::clear(), Ordering::SeqCst);
     }
     history_changed(&app);
 }
@@ -160,7 +175,11 @@ fn set_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> R
     }
     if settings.launch_at_login != previous.launch_at_login {
         let launcher = app.autolaunch();
-        let result = if settings.launch_at_login { launcher.enable() } else { launcher.disable() };
+        let result = if settings.launch_at_login {
+            launcher.enable()
+        } else {
+            launcher.disable()
+        };
         if let Err(error) = result {
             problem = Some(format!("Could not change launch at login: {error}"));
             settings.launch_at_login = previous.launch_at_login;
@@ -214,7 +233,10 @@ fn close_popup(app: &AppHandle, restore_focus: bool) {
         let _ = window.hide();
     }
     if restore_focus {
-        let pid = app.state::<AppState>().previous_app.swap(0, Ordering::SeqCst);
+        let pid = app
+            .state::<AppState>()
+            .previous_app
+            .swap(0, Ordering::SeqCst);
         if pid > 0 {
             platform::activate(pid);
         }
@@ -222,7 +244,9 @@ fn close_popup(app: &AppHandle, restore_focus: bool) {
 }
 
 fn toggle_popup(app: &AppHandle, from_tray: bool) {
-    let Some(window) = app.get_webview_window("popup") else { return };
+    let Some(window) = app.get_webview_window("popup") else {
+        return;
+    };
     if window.is_visible().unwrap_or(false) {
         close_popup(app, true);
         return;
@@ -245,8 +269,15 @@ fn toggle_popup(app: &AppHandle, from_tray: bool) {
     } else if !from_tray && mode == "lastPosition" {
         // Stays where it was left.
     } else if let Some((x, y)) = anchor {
-        let size = window.outer_size().map(|s| (s.width as f64, s.height as f64)).unwrap_or((840.0, 1040.0));
-        let (mut left, mut top) = if at_tray { (x - size.0 / 2.0, y) } else { (x, y) };
+        let size = window
+            .outer_size()
+            .map(|s| (s.width as f64, s.height as f64))
+            .unwrap_or((840.0, 1040.0));
+        let (mut left, mut top) = if at_tray {
+            (x - size.0 / 2.0, y)
+        } else {
+            (x, y)
+        };
         // Both the pointer and monitor rectangles are in physical pixels.
         let monitors = app.available_monitors().unwrap_or_default();
         let containing = monitors.iter().find(|m| {
@@ -320,16 +351,26 @@ fn sync_tray(app: &AppHandle) {
     if let Some(item) = state.pause_item.lock().unwrap().as_ref() {
         let _ = item.set_checked(settings.ignore_events);
     }
-    let Some(tray) = app.tray_by_id("main") else { return };
+    let Some(tray) = app.tray_by_id("main") else {
+        return;
+    };
     let mut title = String::new();
     if settings.ignore_events {
         title.push_str("paused");
     } else if settings.show_recent_copy_in_menu_bar {
         let history = state.history.lock().unwrap();
         if let Some(latest) = history.unpinned("lastCopiedAt").first() {
-            let line: String = latest.title.split_whitespace().collect::<Vec<_>>().join(" ");
+            let line: String = latest
+                .title
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
             let short: String = line.chars().take(24).collect();
-            title = if line.chars().count() > 24 { format!("{short}…") } else { short };
+            title = if line.chars().count() > 24 {
+                format!("{short}…")
+            } else {
+                short
+            };
         }
     }
     let _ = tray.set_title(if title.is_empty() { None } else { Some(title) });
@@ -399,7 +440,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             } = event
             {
                 let app = tray.app_handle();
-                *app.state::<AppState>().tray_position.lock().unwrap() = Some((position.x, position.y));
+                *app.state::<AppState>().tray_position.lock().unwrap() =
+                    Some((position.x, position.y));
                 // ⌥-click pauses capturing; ⌥⇧-click ignores only the next copy.
                 match platform::held_modifiers() {
                     (true, true) => update_settings(app, |s| s.ignore_only_next_event = true),
@@ -437,17 +479,17 @@ fn capture(app: &AppHandle) -> Option<(Vec<Raw>, Option<String>)> {
     };
 
     let types = platform::pasteboard_types();
-    if types
-        .iter()
-        .any(|t| TRANSIENT_TYPES.contains(&t.as_str()) || settings.ignored_pasteboard_types.contains(t))
-    {
+    if types.iter().any(|t| {
+        TRANSIENT_TYPES.contains(&t.as_str()) || settings.ignored_pasteboard_types.contains(t)
+    }) {
         return None;
     }
 
     let front = platform::frontmost();
     let listed = front.as_ref().is_some_and(|app| {
         settings.ignored_apps.iter().any(|entry| {
-            app.bundle_id.as_deref() == Some(entry.as_str()) || app.name.as_deref() == Some(entry.as_str())
+            app.bundle_id.as_deref() == Some(entry.as_str())
+                || app.name.as_deref() == Some(entry.as_str())
         })
     });
     if settings.ignore_all_apps_except_listed != listed {
@@ -485,24 +527,61 @@ fn capture(app: &AppHandle) -> Option<(Vec<Raw>, Option<String>)> {
 }
 
 fn start_watcher(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        let state = app.state::<AppState>();
-        let interval = state.settings().clipboard_check_interval.clamp(0.1, 10.0);
-        std::thread::sleep(Duration::from_secs_f64(interval));
-
-        let (sender, receiver) = mpsc::channel();
-        let handle = app.clone();
-        if app.run_on_main_thread(move || { let _ = sender.send(capture(&handle)); }).is_err() {
-            continue;
-        }
-        if let Ok(Some((contents, source))) = receiver.recv() {
-            let limit = state.settings().history_size;
-            let added = state.history.lock().unwrap().add(contents, source, limit, history::now());
-            if added.is_some() {
-                history_changed(&app);
-            }
+    std::thread::spawn(move || {
+        let mut screenshots = screenshots::Watcher::new();
+        loop {
+            watch_once(&app, &mut screenshots);
         }
     });
+}
+
+fn watch_once(app: &AppHandle, screenshots: &mut screenshots::Watcher) {
+    let state = app.state::<AppState>();
+    let interval = state.settings().clipboard_check_interval.clamp(0.1, 10.0);
+    std::thread::sleep(Duration::from_secs_f64(interval));
+
+    let (sender, receiver) = mpsc::channel();
+    let handle = app.clone();
+    if app
+        .run_on_main_thread(move || {
+            let _ = sender.send(capture(&handle));
+        })
+        .is_err()
+    {
+        return;
+    }
+    let mut changed = false;
+    if let Ok(Some((contents, source))) = receiver.recv() {
+        let limit = state.settings().history_size;
+        changed |= state
+            .history
+            .lock()
+            .unwrap()
+            .add(contents, source, limit, history::now())
+            .is_some();
+    }
+
+    // Screenshots saved to disk never touch the clipboard, so they are picked up from their folder.
+    // The folder is always polled, so turning the option on later does not sweep in old files.
+    let fresh = screenshots.poll();
+    let settings = state.settings();
+    if settings.capture_screenshots && settings.save_images && !settings.ignore_events {
+        for path in fresh {
+            if let Some(image) = screenshots::load(&path) {
+                let source = Some("Screenshot".to_string());
+                let added = state.history.lock().unwrap().add(
+                    vec![image],
+                    source,
+                    settings.history_size,
+                    history::now(),
+                );
+                changed |= added.is_some();
+            }
+        }
+    }
+    if changed {
+        history_changed(app);
+    }
 }
 
 fn main() {
@@ -516,7 +595,10 @@ fn main() {
                 })
                 .build(),
         )
-        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .invoke_handler(tauri::generate_handler![
             list_items,
             thumbnail,
@@ -578,7 +660,9 @@ fn main() {
         .expect("error while building Tokly")
         .run(|app, event| match event {
             // Closing the preferences window must not quit the menu bar app.
-            tauri::RunEvent::ExitRequested { code: None, api, .. } => api.prevent_exit(),
+            tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } => api.prevent_exit(),
             // Opening the app again while it runs (Finder, Spotlight, `open`) shows the history.
             tauri::RunEvent::Reopen { .. } => {
                 let popup_open = app
