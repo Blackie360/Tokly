@@ -15,7 +15,9 @@ const KEY_LABELS = {
   Minus: "-", Equal: "=", Comma: ",", Period: ".", Slash: "/", Semicolon: ";",
   Quote: "'", Backquote: "`", BracketLeft: "[", BracketRight: "]", Backslash: "\\",
 };
-const MODIFIER_LABELS = { Control: "⌃", Alt: "⌥", Shift: "⇧", Command: "⌘" };
+const MODIFIER_LABELS = IS_MAC
+  ? { Control: "⌃", Alt: "⌥", Shift: "⇧", Command: "⌘" }
+  : { Control: "Ctrl+", Alt: "Alt+", Shift: "Shift+", Command: "Super+" };
 
 function describeHotkey(accelerator) {
   if (!accelerator) return "None";
@@ -23,7 +25,7 @@ function describeHotkey(accelerator) {
   const key = parts.pop();
   // Modifiers in the order macOS shows them: ⌃⌥⇧⌘.
   const modifiers = Object.keys(MODIFIER_LABELS).filter((name) => parts.includes(name));
-  return modifiers.map((name) => MODIFIER_LABELS[name]).join("") + (KEY_LABELS[key] ?? key);
+  return modifiers.map((name) => MODIFIER_LABELS[name]).join("") + keys(KEY_LABELS[key] ?? key);
 }
 
 /** Builds an accelerator such as "Command+Shift+C" from a key press, or null. */
@@ -81,7 +83,7 @@ function show() {
   const act = (doPaste, doPlain) =>
     doPaste ? (doPlain ? "paste without formatting" : "paste") : doPlain ? "copy as plain text" : "copy";
   document.getElementById("modifier-hint").textContent =
-    `Select to ${act(paste, plain)}. Hold ⌥ to ${act(!paste, plain)}; hold ⌥⇧ to ${act(true, !plain)}.`;
+    keys(`Select to ${act(paste, plain)}. Hold ⌥ to ${act(!paste, plain)}; hold ⌥⇧ to ${act(true, !plain)}.`);
 }
 
 function collect() {

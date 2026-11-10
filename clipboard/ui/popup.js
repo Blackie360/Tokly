@@ -142,8 +142,8 @@ function render() {
     item.append(title);
 
     const hint = document.createElement("kbd");
-    if (pinned) hint.textContent = `⌘${row.pin.toUpperCase()}`;
-    else if (++unpinnedSeen <= 9) hint.textContent = `⌘${unpinnedSeen}`;
+    if (pinned) hint.textContent = keys(`⌘${row.pin.toUpperCase()}`);
+    else if (++unpinnedSeen <= 9) hint.textContent = keys(`⌘${unpinnedSeen}`);
     item.append(hint);
     el.list.append(item);
   }
@@ -263,7 +263,10 @@ async function confirmClear() {
 
 document.addEventListener("keydown", (event) => {
   const { key, code } = event;
-  const command = event.metaKey;
+  // The main modifier is ⌘ on macOS and Ctrl elsewhere. AltGr reports itself as Ctrl+Alt
+  // on Windows and must not count; Ctrl+N and Ctrl+P move the selection only on macOS.
+  const command = IS_MAC ? event.metaKey : event.ctrlKey && !event.getModifierState("AltGraph");
+  const control = IS_MAC && event.ctrlKey;
 
   if (!el.confirm.hidden) {
     if (key === "Escape") {
@@ -284,9 +287,9 @@ document.addEventListener("keydown", (event) => {
     } else {
       invoke("hide_popup");
     }
-  } else if (key === "ArrowDown" || (event.ctrlKey && code === "KeyN")) {
+  } else if (key === "ArrowDown" || (control && code === "KeyN")) {
     move(command ? rows.length : 1);
-  } else if (key === "ArrowUp" || (event.ctrlKey && code === "KeyP")) {
+  } else if (key === "ArrowUp" || (control && code === "KeyP")) {
     move(command ? -rows.length : -1);
   } else if (key === "Enter") {
     activate(selectedId, event);
@@ -294,16 +297,16 @@ document.addEventListener("keydown", (event) => {
     requestClear(event.shiftKey);
   } else if (event.altKey && !command && key === "Backspace") {
     removeSelected();
-  } else if (event.altKey && !command && !event.ctrlKey && code === "KeyP") {
+  } else if (event.altKey && !command && !control && code === "KeyP") {
     if (selectedId) invoke("toggle_pin", { id: selectedId });
   } else if (command && key === ",") {
     invoke("open_settings");
   } else if (command && code === "KeyQ") {
     invoke("quit");
-  } else if (command && !event.ctrlKey && /^Digit[1-9]$/.test(code)) {
+  } else if (command && !control && /^Digit[1-9]$/.test(code)) {
     const row = rows.filter((candidate) => candidate.pin === null)[Number(code.slice(5)) - 1];
     if (row) activate(row.id, event);
-  } else if (command && !event.ctrlKey && /^Key[A-Z]$/.test(code)) {
+  } else if (command && !control && /^Key[A-Z]$/.test(code)) {
     const row = rows.find((candidate) => candidate.pin === code.slice(3).toLowerCase());
     if (row) activate(row.id, event);
     else handled = false; // leave ⌘A, ⌘C, ⌘V, ⌘X, ⌘Z to the search field

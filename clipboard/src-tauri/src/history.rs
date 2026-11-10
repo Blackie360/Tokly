@@ -64,6 +64,8 @@ impl History {
     pub fn load(dir: &Path) -> History {
         let _ = std::fs::create_dir_all(dir.join("blobs"));
         // Copied content is stored as plain files; keep other accounts on this Mac out of it.
+        // (Windows profiles are already private to their account.)
+        #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
@@ -465,6 +467,7 @@ mod tests {
         vec![(STRING.to_string(), s.as_bytes().to_vec())]
     }
 
+    #[cfg(unix)]
     #[test]
     fn history_folder_is_private_to_the_user() {
         use std::os::unix::fs::PermissionsExt;
