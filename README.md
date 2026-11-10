@@ -1,5 +1,7 @@
 # Tokly
 
+> This repository also contains **Tokly clipboard history**, a separate menu bar clipboard manager, in [`clipboard/`](clipboard/README.md), and the website for tokly.blackielabs.com in [`website/`](website/README.md). The rest of this file describes the Tokly desktop project tracker at the repository root.
+
 Desktop version 0.2.0 adds Continue Working cards with persistent pins and selectable Git history.
 
 **Pick up where you left off.** Tokly is a local-first desktop companion that discovers Git projects inside workspace folders you choose, records file activity, and keeps your next step close.

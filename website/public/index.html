@@ -115,11 +115,14 @@
   </div>
   <div class="cards">
     <article><h3>Text, images and files</h3><p>Keeps the last 200 things you copied by default. Choose which kinds to save and how many to keep.</p></article>
+    <article><h3>Screenshots, automatically</h3><p>Screenshots that macOS saves to your screenshot folder join the history without being copied first. HEIC and PDF screenshots are skipped.</p></article>
     <article><h3>Four ways to search</h3><p>Exact, fuzzy, regular expressions, or mixed, which tries each in turn. Matches are highlighted as you type.</p></article>
     <article><h3>Pins that stay put</h3><p>Pin what you paste every day. Each pin gets a letter, and pins are never pushed out by new copies.</p></article>
     <article><h3>No repeats</h3><p>Copy the same thing twice and Tokly moves it back to the top instead of storing it again.</p></article>
     <article><h3>Paste as plain text</h3><p>Drop the fonts and colors that came along with a copy, for one paste or every time.</p></article>
-    <article><h3>Helpful details</h3><p>Color swatches next to hex codes, visible symbols for line breaks and tabs, and a popup that opens at your cursor.</p></article>
+    <article><h3>Helpful details</h3><p>Color swatches next to hex codes and visible symbols for line breaks and tabs.</p></article>
+    <article><h3>Opens where you are</h3><p>The history appears at your cursor, under the menu bar icon, in the center of the screen, or where you last left it.</p></article>
+    <article><h3>Yours to tune</h3><p>Change the shortcut, sort order, history size and what the popup shows, or start Tokly when you log in.</p></article>
   </div>
 </section>
 
@@ -133,7 +136,7 @@
     <li><h3>Stored locally</h3><p>History is kept in a folder on your Mac. There is no account, no sync and no analytics.</p><code>~/Library/Application Support/com.blackielabs.tokly.clipboard/</code></li>
     <li><h3>Skips what password managers hide</h3><p>Copies marked as concealed or transient are never recorded. You can also ignore whole apps, pasteboard types, or any text matching a pattern.</p></li>
     <li><h3>Easy to pause and clear</h3><p>⌥-click the menu bar icon to pause capturing, or ⌥⇧-click to skip only the next copy. Clear the history any time, or automatically when you quit.</p></li>
-    <li><h3>One optional permission</h3><p>Pasting for you needs the macOS Accessibility permission. Copying an item back to the clipboard works without it.</p></li>
+    <li><h3>Two permissions, both optional</h3><p>Pasting for you needs the macOS Accessibility permission; copying an item back works without it. Adding screenshots makes macOS ask once for access to your screenshot folder; you can switch that off in Preferences.</p></li>
   </ul>
   <p class="caveat">Ordinary text you copy is stored as copied. Pause capturing before copying something sensitive from an app that does not mark it as concealed.</p>
 </section>
@@ -169,6 +172,7 @@
     <details><summary>Can the demo on this page see my clipboard?</summary><p>No. The demo is a small script with made-up items. It never reads your clipboard and forgets everything when you reload.</p></details>
     <details><summary>Why does Tokly ask for Accessibility access?</summary><p>Only so it can press ⌘V for you when you choose to paste an item directly. If you decline, Tokly still copies the item and you paste it yourself.</p></details>
     <details><summary>Does it remember my passwords?</summary><p>Not when the app you copy from marks them as concealed or transient, which is what password managers do. Anything copied as ordinary text is remembered, so pause capturing first or add the app to the ignore list.</p></details>
+    <details><summary>Does it watch my files?</summary><p>Only your screenshot folder, and only for files macOS has tagged as screenshots. Turn it off under Preferences, Storage, and Tokly looks at nothing but the clipboard.</p></details>
     <details><summary>Is it signed by Apple?</summary><p>Not yet. Version 0.1.0 is an early build without a Developer ID signature or notarization, so macOS will warn you the first time it opens.</p></details>
     <details><summary>Is there a Windows or Linux version?</summary><p>No. Tokly is for macOS 12 or later.</p></details>
   </div>

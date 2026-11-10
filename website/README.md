@@ -12,7 +12,9 @@ The publishable output is `website/public/`. There are no installation steps, ex
 
 The production hostname is https://tokly.blackielabs.com/ on the existing `tokly` Vercel project. Publish only `website/public/`, never the repository root.
 
-`vercel.json` in this directory sets framework `null`, build command `node verify.mjs`, an empty install command and output directory `public`. The project's root directory must be `website` for those to apply; Git-triggered deployments from the repository root have been failing.
+`vercel.json` in this directory sets framework `null`, build command `node verify.mjs`, an empty install command and output directory `public`. It only applies when Vercel builds from this folder, so the project's Root Directory setting must be `website` (Vercel dashboard, project `tokly`, Settings, Build and Deployment). With that set, every push deploys the site.
+
+Until 10 November 2026 the project was still configured for the old Next.js app at the repository root, so Git-triggered deployments failed and the site was published by hand with per-deployment overrides (root directory `website`, the same values as `vercel.json`). There is deliberately no `vercel.json` at the repository root.
 
 ## Release state on the page
 

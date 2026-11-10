@@ -27,6 +27,7 @@ assert(html.includes('<link rel="canonical" href="https://tokly.blackielabs.com/
 assert(html.includes('never reads your clipboard'), 'Demo must say it does not read the clipboard');
 assert(html.includes('Not yet signed or notarized by Apple'), 'Unsigned release warning must remain');
 assert(html.includes('Ordinary text you copy is stored as copied.'), 'Plain-text storage caveat must remain');
+assert(html.includes('access to your screenshot folder'), 'Screenshot folder access must be disclosed');
 const release = html.match(/data-release="(pending|published)"/)?.[1];
 assert(release, 'Install section must declare data-release="pending" or "published"');
 if (release === 'pending') assert(html.includes('Homebrew cask not published yet'), 'A pending cask must be labelled as not published');

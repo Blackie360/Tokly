@@ -63,6 +63,11 @@ pub struct History {
 impl History {
     pub fn load(dir: &Path) -> History {
         let _ = std::fs::create_dir_all(dir.join("blobs"));
+        // Copied content is stored as plain files; keep other accounts on this Mac out of it.
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+        }
         let items = std::fs::read(dir.join("index.json"))
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
@@ -458,6 +463,17 @@ mod tests {
 
     fn text(s: &str) -> Vec<Raw> {
         vec![(STRING.to_string(), s.as_bytes().to_vec())]
+    }
+
+    #[test]
+    fn history_folder_is_private_to_the_user() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        History::load(&dir);
+        let mode = std::fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700);
     }
 
     #[test]

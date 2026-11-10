@@ -13,8 +13,8 @@ jobs:
   interface:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -23,16 +23,24 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+  website:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node website/verify.mjs
   macos:
     name: macOS (${{ matrix.target }})
-    runs-on: macos-14
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         target: [aarch64-apple-darwin, x86_64-apple-darwin]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -56,4 +64,35 @@ jobs:
         with:
           name: Tokly-macos-${{ matrix.target }}-unsigned
           path: Tokly-${{ matrix.target }}.zip
+          retention-days: 14
+  clipboard:
+    name: Clipboard history (macOS universal)
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: clipboard
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clipboard/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clipboard/src-tauri
+      - run: npm ci
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - run: npm run tauri -- build --target universal-apple-darwin --bundles app --no-sign
+      - run: ditto -c -k --sequesterRsrc --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/Tokly.app Tokly-clipboard-universal.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tokly-clipboard-macos-universal-unsigned
+          path: clipboard/Tokly-clipboard-universal.zip
           retention-days: 14
