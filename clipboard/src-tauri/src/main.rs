@@ -181,6 +181,11 @@ fn set_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> R
 }
 
 #[tauri::command]
+fn default_ignored_types() -> Vec<String> {
+    settings::default_ignored_types()
+}
+
+#[tauri::command]
 fn storage_size(state: State<AppState>) -> u64 {
     state.history.lock().unwrap().size_on_disk()
 }
@@ -522,6 +527,7 @@ fn main() {
             get_settings,
             set_settings,
             storage_size,
+            default_ignored_types,
             hide_popup,
             open_settings,
             quit

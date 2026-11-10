@@ -1,14 +1,6 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
-const DEFAULT_IGNORED_TYPES = [
-  "Pasteboard generator type",
-  "com.agilebits.onepassword",
-  "com.typeit4me.clipping",
-  "de.petermaurer.TransientPasteboardType",
-  "net.antelle.keeweb",
-];
-
 const status = document.getElementById("status");
 const hotkeyButton = document.getElementById("hotkey");
 const fields = [...document.querySelectorAll("[data-key]")];
@@ -154,8 +146,9 @@ async function saveKeepingFocus() {
   }
 }
 
-document.getElementById("reset-types").addEventListener("click", () => {
-  document.querySelector('[data-key="ignoredPasteboardTypes"]').value = DEFAULT_IGNORED_TYPES.join("\n");
+document.getElementById("reset-types").addEventListener("click", async () => {
+  const defaults = await invoke("default_ignored_types");
+  document.querySelector('[data-key="ignoredPasteboardTypes"]').value = defaults.join("\n");
   save();
 });
 
