@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tokly</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="popup">
+  <main id="panel">
+    <header id="search-bar" data-tauri-drag-region>
+      <input id="search" type="text" placeholder="type to search…" autocomplete="off" autocorrect="off"
+             autocapitalize="off" spellcheck="false" aria-label="Search clipboard history">
+      <button id="search-clear" title="Clear search" aria-label="Clear search" hidden>✕</button>
+    </header>
+
+    <ul id="list" role="listbox" aria-label="Clipboard history"></ul>
+    <p id="empty" hidden></p>
+
+    <section id="info" hidden></section>
+
+    <section id="confirm" hidden>
+      <p><strong>Are you sure you want to clear the history?</strong><br>You can't undo this action.</p>
+      <div class="confirm-actions">
+        <label><input type="checkbox" id="confirm-suppress"> Don't ask again</label>
+        <span class="spacer"></span>
+        <button id="confirm-cancel">Cancel</button>
+        <button id="confirm-ok" class="danger">Clear</button>
+      </div>
+    </section>
+
+    <footer id="footer">
+      <button data-action="clear" title="Clear unpinned items. Hold ⇧ to clear all.">
+        <span class="label">Clear</span><kbd>⌥⌘⌫</kbd>
+      </button>
+      <button data-action="preferences"><span class="label">Preferences…</span><kbd>⌘,</kbd></button>
+      <button data-action="quit"><span class="label">Quit</span><kbd>⌘Q</kbd></button>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

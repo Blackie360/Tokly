@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tokly Preferences</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="settings">
+  <nav id="tabs" role="tablist">
+    <button role="tab" data-pane="general" aria-selected="true">General</button>
+    <button role="tab" data-pane="storage">Storage</button>
+    <button role="tab" data-pane="appearance">Appearance</button>
+    <button role="tab" data-pane="ignore">Ignore</button>
+    <button role="tab" data-pane="advanced">Advanced</button>
+  </nav>
+
+  <div id="panes">
+    <section id="general">
+      <div class="row">
+        <span class="name">Open:</span>
+        <div class="field">
+          <button id="hotkey" class="recorder" title="Click, then press the new shortcut"></button>
+          <p class="hint">Global shortcut that opens the history. Click to change; Esc cancels.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Startup:</span>
+        <div class="field"><label><input type="checkbox" data-key="launchAtLogin"> Launch at login</label></div>
+      </div>
+      <div class="row">
+        <span class="name">Search:</span>
+        <div class="field">
+          <select data-key="searchMode">
+            <option value="exact">Exact</option>
+            <option value="fuzzy">Fuzzy</option>
+            <option value="regexp">Regular expressions</option>
+            <option value="mixed">Mixed</option>
+          </select>
+          <p class="hint">Mixed tries exact, then regular expressions, then fuzzy.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Behavior:</span>
+        <div class="field">
+          <label><input type="checkbox" data-key="pasteByDefault"> Paste automatically</label>
+          <label><input type="checkbox" data-key="removeFormattingByDefault"> Paste without formatting</label>
+          <p class="hint" id="modifier-hint"></p>
+          <p class="hint">Pasting needs the Accessibility permission; macOS asks the first time.</p>
+        </div>
+      </div>
+      <hr>
+      <p class="block-hint">In the history: ⌥⌫ deletes the selected item, ⌥P pins or unpins it, ⌘1–9 picks an item,
+        ⌘ plus a pin's letter picks that pin, and ⌥⌘⌫ clears the history.</p>
+    </section>
+
+    <section id="storage" hidden>
+      <div class="row">
+        <span class="name">Save:</span>
+        <div class="field">
+          <label><input type="checkbox" data-key="saveText"> Text</label>
+          <label><input type="checkbox" data-key="saveImages"> Images</label>
+          <label><input type="checkbox" data-key="saveFiles"> Files</label>
+          <p class="hint">Which kinds of copied content are stored.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Size:</span>
+        <div class="field">
+          <input type="number" min="1" max="999" data-key="historySize">
+          <p class="hint">Number of unpinned items to keep. Default: 200.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Sort by:</span>
+        <div class="field">
+          <select data-key="sortBy">
+            <option value="lastCopiedAt">Time of last copy</option>
+            <option value="firstCopiedAt">Time of first copy</option>
+            <option value="numberOfCopies">Number of copies</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">On disk:</span>
+        <div class="field"><span id="storage-size">…</span></div>
+      </div>
+    </section>
+
+    <section id="appearance" hidden>
+      <div class="row">
+        <span class="name">Popup at:</span>
+        <div class="field">
+          <select data-key="popupPosition">
+            <option value="cursor">Cursor</option>
+            <option value="statusItem">Menu icon</option>
+            <option value="center">Screen center</option>
+            <option value="lastPosition">Last position</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Pin to:</span>
+        <div class="field">
+          <select data-key="pinTo">
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Image height:</span>
+        <div class="field">
+          <input type="number" min="16" max="128" data-key="imageMaxHeight">
+          <p class="hint">Maximum image preview height. Default: 40.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Highlight matches:</span>
+        <div class="field">
+          <select data-key="highlightMatch">
+            <option value="bold">Bold</option>
+            <option value="italic">Italic</option>
+            <option value="underline">Underline</option>
+            <option value="color">Color</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Show:</span>
+        <div class="field">
+          <label><input type="checkbox" data-key="showSearch"> Search field</label>
+          <label><input type="checkbox" data-key="showFooter"> Footer</label>
+          <label><input type="checkbox" data-key="showSpecialSymbols"> Special symbols for newlines, tabs and outer spaces</label>
+          <label><input type="checkbox" data-key="showHexColorSwatch"> Color swatch next to hex color codes</label>
+          <label><input type="checkbox" data-key="showRecentCopyInMenuBar"> Recent copy next to the menu icon</label>
+          <p class="hint">With the footer hidden, ⌘, still opens these preferences.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ignore" hidden>
+      <h3>Applications</h3>
+      <p class="block-hint">Copies made while one of these apps is frontmost are not remembered. One app name or
+        bundle identifier per line. This is best effort; prefer pasteboard types where an app offers one.</p>
+      <textarea data-key="ignoredApps" data-list spellcheck="false" placeholder="com.example.PasswordManager"></textarea>
+      <label><input type="checkbox" data-key="ignoreAllAppsExceptListed"> Ignore all applications except listed</label>
+
+      <h3>Pasteboard types</h3>
+      <p class="block-hint">Copies carrying any of these types are not remembered. Transient and concealed copies
+        (nspasteboard.org) are always skipped.</p>
+      <textarea data-key="ignoredPasteboardTypes" data-list spellcheck="false"></textarea>
+      <button id="reset-types" class="plain-button">Reset</button>
+
+      <h3>Regular expressions</h3>
+      <p class="block-hint">Text matching any of these patterns is not remembered. One pattern per line.</p>
+      <textarea data-key="ignoredRegexps" data-list spellcheck="false" placeholder="^[a-zA-Z0-9]{50}$"></textarea>
+    </section>
+
+    <section id="advanced" hidden>
+      <div class="row">
+        <span class="name">Turn off:</span>
+        <div class="field">
+          <label><input type="checkbox" data-key="ignoreEvents"> Pause capturing</label>
+          <p class="hint">Temporarily ignore all new copies. You can also ⌥-click the menu icon, or ⌥⇧-click it to
+            ignore only the next copy.</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Clearing:</span>
+        <div class="field">
+          <label><input type="checkbox" data-key="clearOnQuit"> Clear history on quit</label>
+          <p class="hint">Removes all unpinned items before quitting.</p>
+          <label><input type="checkbox" data-key="clearSystemClipboard"> Clear the system clipboard too</label>
+          <p class="hint">Clearing the history also empties the current clipboard.</p>
+          <label><input type="checkbox" data-key="suppressClearAlert"> Clear without asking</label>
+        </div>
+      </div>
+      <div class="row">
+        <span class="name">Check every:</span>
+        <div class="field">
+          <label><input type="number" min="0.1" max="10" step="0.1" data-key="clipboardCheckInterval"> seconds</label>
+          <p class="hint">How often the clipboard is checked for changes. Default: 0.5.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="status" role="status"></div>
+  <script src="settings.js"></script>
+</body>
+</html>
