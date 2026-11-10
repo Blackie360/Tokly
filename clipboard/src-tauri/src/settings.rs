@@ -108,3 +108,50 @@ impl Settings {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp() -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("tokly-settings-{}", uuid::Uuid::new_v4()))
+    }
+
+    #[test]
+    fn missing_or_broken_file_gives_defaults() {
+        let dir = temp();
+        let path = dir.join("settings.json");
+        assert_eq!(Settings::load(&path).hotkey, "Command+Shift+C");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&path, b"{ not json").unwrap();
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.history_size, 200);
+        assert_eq!(loaded.ignored_pasteboard_types, default_ignored_types());
+    }
+
+    #[test]
+    fn saves_and_reloads_in_a_new_folder() {
+        let path = temp().join("nested").join("settings.json");
+        let settings = Settings {
+            history_size: 42,
+            ignored_apps: vec!["com.example.Vault".into()],
+            ..Settings::default()
+        };
+        settings.save(&path);
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.history_size, 42);
+        assert_eq!(loaded.ignored_apps, vec!["com.example.Vault".to_string()]);
+    }
+
+    #[test]
+    fn older_files_keep_their_values_and_gain_new_defaults() {
+        let dir = temp();
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        std::fs::write(&path, br#"{"historySize": 7, "noLongerUsed": true}"#).unwrap();
+        let loaded = Settings::load(&path);
+        assert_eq!(loaded.history_size, 7);
+        assert!(loaded.capture_screenshots);
+        assert_eq!(loaded.search_mode, "exact");
+    }
+}
