@@ -3,7 +3,7 @@
 Tokly is a clipboard history that lives in the macOS menu bar or the Windows and Linux system tray. Press ⇧⌘C (Alt+Shift+C on Windows and Linux), type a few letters and press return to get back something you copied earlier. Everything stays on your computer.
 
 - [`clipboard/`](clipboard/README.md): the app. Tauri 2, a Rust backend and a plain HTML/CSS/JS front end. Build, run, test and release instructions are in its README.
-- [`website/`](website/README.md): the static site published at https://tokly.blackielabs.com/.
+- [`website/`](website/README.md): the site published at https://tokly.blackielabs.com/, built with React and the Astryx design system.
 
 ## Checks
 
@@ -13,8 +13,8 @@ cargo fmt --check
 cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked
 
-# Website (from the repository root)
-node website/verify.mjs
+# Website (from website/)
+npm ci && npm run build
 ```
 
 CI runs the same checks and an unsigned build for macOS, Windows and Linux on every pull request.

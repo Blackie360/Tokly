@@ -358,7 +358,17 @@ listen("settings-changed", async () => {
   await loadSettings();
   refresh();
 });
+// The window is shown and hidden natively, so the entrance is replayed by hand.
+function playEntrance() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  el.panel.animate(
+    [{ opacity: 0, transform: "translateY(-6px) scale(0.985)" }, { opacity: 1, transform: "none" }],
+    { duration: 140, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" },
+  );
+}
+
 listen("popup-shown", async () => {
+  playEntrance();
   await loadSettings();
   el.confirm.hidden = true;
   el.search.value = "";

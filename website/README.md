@@ -1,31 +1,34 @@
 # Tokly website
 
-Static marketing website for Tokly clipboard history, the menu bar clipboard manager in `clipboard/`. All website source and deployment files live here.
+The site published at https://tokly.blackielabs.com/. It is a small React app built with [Astryx](https://astryx.atmeta.com/), Meta's open source design system, using its Chocolate theme, and bundled by Vite into static files.
 
-## Validate
+## Work on it
 
-Run `node website/verify.mjs` from the repository root, or `npm test` inside `website/`. The script checks structure and ARIA references, the honesty labels listed below, script safety, a 60KB uncompressed public-asset budget, and the demo's history logic in `test-interactions.mjs`.
+```sh
+cd website
+npm ci
+npm run dev      # local preview
+npm run build    # type-check, build to dist/, then run verify.mjs
+npm test         # demo logic tests only
+```
 
-The publishable output is `website/public/`. There are no installation steps, external fonts, runtime dependencies, analytics or network calls. Serve the directory with any static server, or open `public/index.html` directly.
+- `src/App.tsx` is the page: every section, and the copy as data at the top of the file.
+- `src/Demo.tsx` is the working copy of the history popup in the hero. `src/history.js` holds its rules, shared with `test-interactions.mjs`.
+- `src/site.css` holds what Astryx does not provide: the ember gradient from the app icon, the popup, the ticker and the drawn feature illustrations.
+- `AGENTS.md` is Astryx's guide for coding agents (written by `npx astryx init`). Use `npx astryx build`, `component <Name>` and `docs <topic>` to look things up before changing the layout.
 
-## Vercel deployment
+Layout, type, buttons, key caps, cards, the code block and the FAQ are Astryx components. Fonts (Fraunces, Albert Sans, JetBrains Mono) are bundled from `@fontsource-variable` instead of the theme's Google Fonts import, so the page loads nothing from another origin.
 
-The production hostname is https://tokly.blackielabs.com/ on the existing `tokly` Vercel project. Publish only `website/public/`, never the repository root.
+## Deployment
 
-`vercel.json` in this directory sets framework `null`, build command `node verify.mjs`, an empty install command and output directory `public`. It only applies when Vercel builds from this folder, so the project's Root Directory setting must be `website` (Vercel dashboard, project `tokly`, Settings, Build and Deployment). With that set, every push deploys the site.
+Vercel builds this folder: the `tokly` project's Root Directory is `website`, and `vercel.json` sets the Vite preset, `npm ci`, `npm run build` and the `dist` output. Every push to `main` deploys. The build fails if `verify.mjs` fails.
 
-Until 10 November 2026 the project was still configured for the old Next.js app at the repository root, so Git-triggered deployments failed and the site was published by hand with per-deployment overrides (root directory `website`, the same values as `vercel.json`). There is deliberately no `vercel.json` at the repository root.
+## What verify.mjs enforces
 
-## Release state on the page
+- Required wording ships: the demo never reads the clipboard, the macOS app is not yet signed or notarized, ordinary text is stored as copied, the screenshot folder prompt is disclosed, and Windows and Linux are "In testing, not released yet".
+- The install section's `data-release` flag matches its label. It is `pending`, and the command `brew install --cask blackie360/tokly/tokly` is the planned one; no tap exists yet. When the cask is live, confirm the command, set `data-release="published"` and remove the pending wording.
+- Site code makes no network requests, uses no storage and never reads the clipboard. The only clipboard write is the copy button on the install command.
+- No stylesheet or tag loads a third-party resource.
+- Compressed HTML, CSS and JavaScript stay under 330 KB.
 
-- The install section is marked `data-release="pending"` and labelled "Homebrew cask not published yet". The command shown, `brew install --cask blackie360/tokly/tokly`, is the planned one; no tap exists yet. When the cask is live, confirm the command, set `data-release="published"` and remove the pending wording. `verify.mjs` enforces that the two stay in step.
-- Version 0.1.0 is described as not yet signed or notarized. Keep that until it changes.
-- The privacy section states that ordinary copied text is stored as copied. Keep it accurate to the app.
-
-## Demo
-
-The hero contains a working copy of the history popup. Sample "Copy" buttons add items to it; visitors can search, move with the arrow keys, press return to pick, pin with ⌥P and delete with ⌥⌫, or use the Pin, Delete and Reset buttons. It mirrors the app's rules: repeated copies move to the top, pins take letters from the app's list and sort first, and hex colors get a swatch.
-
-Everything is held in memory and resets on reload. The script never reads the clipboard. Its only clipboard write is the "Copy command" button in the install section. Without JavaScript the popup is a static list and script-dependent buttons stay disabled.
-
-See `QA.md` for what was checked.
+See `QA.md` for what was checked by hand.
