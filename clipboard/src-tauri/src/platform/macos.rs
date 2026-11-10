@@ -1,6 +1,7 @@
 //! Thin bridge to the macOS pasteboard, workspace and event APIs.
 //! Pasteboard and workspace calls are made from the main thread.
 
+use super::FrontApp;
 use crate::history::{Raw, FILE_URL};
 use objc2::rc::autoreleasepool;
 use objc2::runtime::AnyObject;
@@ -137,12 +138,6 @@ pub fn clear() -> isize {
         let _: isize = msg_send![pb, clearContents];
         msg_send![pb, changeCount]
     })
-}
-
-pub struct FrontApp {
-    pub pid: i32,
-    pub bundle_id: Option<String>,
-    pub name: Option<String>,
 }
 
 pub fn frontmost() -> Option<FrontApp> {

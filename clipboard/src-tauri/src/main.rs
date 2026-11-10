@@ -1,7 +1,28 @@
 mod history;
 mod platform;
+#[cfg(target_os = "macos")]
 mod screenshots;
 mod settings;
+
+/// Screenshot pickup relies on a macOS file tag; other systems have nothing to watch.
+#[cfg(not(target_os = "macos"))]
+mod screenshots {
+    pub struct Watcher;
+
+    impl Watcher {
+        pub fn new() -> Watcher {
+            Watcher
+        }
+
+        pub fn poll(&mut self) -> Vec<std::path::PathBuf> {
+            vec![]
+        }
+    }
+
+    pub fn load(_path: &std::path::Path) -> Option<crate::history::Raw> {
+        None
+    }
+}
 
 use base64::Engine;
 use history::{History, Raw, FILE_URL, HTML, PNG, RTF, STRING, TIFF};
@@ -204,6 +225,12 @@ fn default_ignored_types() -> Vec<String> {
     settings::default_ignored_types()
 }
 
+/// "macos", "windows" or "linux", so the interface can show the right keys and options.
+#[tauri::command]
+fn platform_name() -> &'static str {
+    std::env::consts::OS
+}
+
 #[tauri::command]
 fn storage_size(state: State<AppState>) -> u64 {
     state.history.lock().unwrap().size_on_disk()
@@ -278,6 +305,8 @@ fn toggle_popup(app: &AppHandle, from_tray: bool) {
         } else {
             (x, y)
         };
+        // Only macOS has a menu bar along the top edge to stay clear of.
+        let menu_bar = if cfg!(target_os = "macos") { 26.0 } else { 0.0 };
         // Both the pointer and monitor rectangles are in physical pixels.
         let monitors = app.available_monitors().unwrap_or_default();
         let containing = monitors.iter().find(|m| {
@@ -291,11 +320,17 @@ fn toggle_popup(app: &AppHandle, from_tray: bool) {
             let origin = monitor.position();
             let extent = monitor.size();
             let scale = monitor.scale_factor();
-            let (min_x, min_y) = (origin.x as f64, origin.y as f64 + 26.0 * scale);
+            let (min_x, min_y) = (origin.x as f64, origin.y as f64 + menu_bar * scale);
             let max_x = origin.x as f64 + extent.width as f64 - size.0;
             let max_y = origin.y as f64 + extent.height as f64 - size.1;
             if at_tray {
-                top = min_y + 4.0 * scale;
+                // Hang below a tray at the top of the screen, sit above one at the bottom.
+                let tray_at_bottom = y > origin.y as f64 + extent.height as f64 / 2.0;
+                top = if tray_at_bottom {
+                    y - size.1 - 12.0 * scale
+                } else {
+                    min_y + 4.0 * scale
+                };
             }
             left = left.min(max_x).max(min_x);
             top = top.min(max_y).max(min_y);
@@ -400,8 +435,14 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let pause = CheckMenuItem::with_id(app, "pause", "Pause Capturing", true, false, None::<&str>)?;
     let skip = MenuItem::with_id(app, "skip", "Ignore Next Copy", true, None::<&str>)?;
     let open = MenuItem::with_id(app, "open", "Show History", true, None::<&str>)?;
-    let preferences = MenuItem::with_id(app, "preferences", "Preferences…", true, Some("Cmd+,"))?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Tokly", true, Some("Cmd+Q"))?;
+    let preferences = MenuItem::with_id(
+        app,
+        "preferences",
+        "Preferences…",
+        true,
+        Some("CmdOrCtrl+,"),
+    )?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Tokly", true, Some("CmdOrCtrl+Q"))?;
     let menu = Menu::with_items(
         app,
         &[
@@ -416,7 +457,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     )?;
     *app.state::<AppState>().pause_item.lock().unwrap() = Some(pause);
 
+    // macOS tints the black template glyph itself; other trays need the colored icon.
+    #[cfg(target_os = "macos")]
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+    #[cfg(not(target_os = "macos"))]
+    let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))?;
     TrayIconBuilder::with_id("main")
         .icon(icon)
         .icon_as_template(true)
@@ -442,7 +487,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 let app = tray.app_handle();
                 *app.state::<AppState>().tray_position.lock().unwrap() =
                     Some((position.x, position.y));
-                // ⌥-click pauses capturing; ⌥⇧-click ignores only the next copy.
+                // ⌥-click pauses capturing; ⌥⇧-click ignores only the next copy. Linux trays
+                // report no clicks at all, so the same actions are in the menu.
                 match platform::held_modifiers() {
                     (true, true) => update_settings(app, |s| s.ignore_only_next_event = true),
                     (true, false) => update_settings(app, |s| s.ignore_events = !s.ignore_events),
@@ -585,7 +631,13 @@ fn watch_once(app: &AppHandle, screenshots: &mut screenshots::Watcher) {
 }
 
 fn main() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Starting Tokly again while it runs shows the history instead of a second copy.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        toggle_popup(app, false);
+    }));
+    builder
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -609,12 +661,14 @@ fn main() {
             get_settings,
             set_settings,
             storage_size,
+            platform_name,
             default_ignored_types,
             hide_popup,
             open_settings,
             quit
         ])
         .setup(|app| {
+            #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let settings_path = app.path().app_config_dir()?.join("settings.json");
@@ -664,6 +718,7 @@ fn main() {
                 code: None, api, ..
             } => api.prevent_exit(),
             // Opening the app again while it runs (Finder, Spotlight, `open`) shows the history.
+            #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => {
                 let popup_open = app
                     .get_webview_window("popup")
