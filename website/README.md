@@ -1,42 +1,29 @@
 # Tokly website
 
-Static marketing and preview website for the local-first Tokly desktop app. All website source and deployment files live here; the desktop application at the repository root is unchanged.
+Static marketing website for Tokly clipboard history, the menu bar clipboard manager in `clipboard/`. All website source and deployment files live here. It replaces the earlier Return Desk page for the project tracker, which remains in Git history.
 
 ## Validate
 
-Run `node website/verify.mjs` from the repository root, or `npm test` inside `website/`. The validation runs structural checks, a 60KB uncompressed public-asset budget, and the dependency-free behavior regression suite in `test-interactions.mjs`.
+Run `node website/verify.mjs` from the repository root, or `npm test` inside `website/`. The script checks structure and ARIA references, the honesty labels listed below, script safety, a 60KB uncompressed public-asset budget, and the demo's history logic in `test-interactions.mjs`.
 
-The publishable output is `website/public/`. There are no installation steps, external fonts, runtime dependencies, analytics, or network calls from the demo script. Serve this directory with any static server to preview.
+The publishable output is `website/public/`. There are no installation steps, external fonts, runtime dependencies, analytics or network calls. Serve the directory with any static server, or open `public/index.html` directly.
 
 ## Vercel deployment
 
-The production hostname is https://tokly.blackielabs.com/ on the existing `tokly` project. Keep the account, domain, DNS, protection, and private repository visibility unchanged. Publish only `website/public/`, never the repository root.
+The production hostname is https://tokly.blackielabs.com/ on the existing `tokly` Vercel project. Publish only `website/public/`, never the repository root.
 
-The current project-wide framework still targets the old Next.js site. Deploy this branch with **per-deployment overrides**, rather than changing shared project settings:
+`vercel.json` in this directory sets framework `null`, build command `node verify.mjs`, an empty install command and output directory `public`. The project's root directory must be `website` for those to apply; Git-triggered deployments from the repository root have been failing.
 
-- Git source: the exact reviewed commit on `feature/tokly-website`.
-- Root directory: `website`.
-- Framework: `null` (Other).
-- Build command: `node verify.mjs`.
-- Install command: empty.
-- Output directory: `public`.
-- Include source files outside root: false.
-- Target: production, when explicitly authorized.
+## Release state on the page
 
-Normal Git-triggered previews may still fail under the old project defaults. Changing those defaults and merging this draft PR are separate actions and must not be assumed from permission to deploy a branch. Do not work around team-access errors through another account or hostname.
+- The install section is marked `data-release="pending"` and labelled "Homebrew cask not published yet". The command shown, `brew install --cask blackie360/tokly/tokly`, is the planned one; no tap exists yet. When the cask is live, confirm the command, set `data-release="published"` and remove the pending wording. `verify.mjs` enforces that the two stay in step.
+- Version 0.1.0 is described as not yet signed or notarized. Keep that until it changes.
+- The privacy section states that ordinary copied text is stored as copied. Keep it accurate to the app.
 
-## Honest release state
+## Demo
 
-The page links to the v0.2.0 prerelease in the private application repository, explicitly requires repository access, and explains the 404 for visitors without access. There is no public installer or Homebrew command advertised. Replace destinations only after public artifacts, architecture-specific URLs, checksums, and tap instructions have been approved, published, and verified. Do not make the source repository public. Keep the unsigned/unnotarized warning until that release fact changes.
+The hero contains a working copy of the history popup. Sample "Copy" buttons add items to it; visitors can search, move with the arrow keys, press return to pick, pin with ⌥P and delete with ⌥⌫, or use the Pin, Delete and Reset buttons. It mirrors the app's rules: repeated copies move to the top, pins take letters from the app's list and sort first, and hex colors get a swatch.
 
-## Interaction
+Everything is held in memory and resets on reload. The script never reads the clipboard. Its only clipboard write is the "Copy command" button in the install section. Without JavaScript the popup is a static list and script-dependent buttons stay disabled.
 
-The Return Desk is an original editorial/physical-paper concept: large black type on warm paper, a lilac note, an offset branch card and a change receipt. A native range control reassembles the artifacts into one return ticket. Visitors can choose three fictional projects, drag or use arrow keys, or select **Bring it back**. **Continue working** reveals a focused result, and **Start again** resets the scene. No app or editor opens.
-
-Tabs use Left/Right, Home and End with horizontal ARIA semantics at all widths. Hidden artifacts are removed from the accessibility tree. An adjacent button provides the same continuation path without requiring users to backtrack after finishing the slider. State is in memory only and resets on reload.
-
-Reduced motion disables parallax and transitions; the range still works through static state changes. Static HTML remains readable when JavaScript is unavailable, and script-dependent controls start disabled. FAQs and release links are native HTML.
-
-The shorter copy uses a two-line product description, single-step notes, brief feature text, and concise release caveats. The public download restrictions remain explicit.
-
-See `QA.md` for verification coverage and limitations. This revised art direction is pending production publication approval.
+See `QA.md` for what was checked.
