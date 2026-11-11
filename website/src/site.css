@@ -23,20 +23,16 @@ html { scroll-behavior: smooth; }
 }
 .screen-body {
   flex: 1;
-  width: min(1180px, 100% - 3rem);
+  width: calc(100% - var(--spacing-6) * 2);
   margin-inline: auto;
-  padding-block: 1.5rem;
+  padding-block: var(--spacing-6);
 }
 .foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1.5rem;
-  width: min(1180px, 100% - 3rem);
+  column-gap: var(--spacing-6);
+  width: calc(100% - var(--spacing-6) * 2);
   margin-inline: auto;
-  padding-block: 1rem 1.25rem;
-  border-top: 1px solid var(--color-border);
+  padding-block: var(--spacing-4) var(--spacing-5);
+  border-top: var(--border-width) solid var(--color-border);
 }
 .explore-panel { min-height: 27rem; }
 
@@ -196,13 +192,13 @@ html { scroll-behavior: smooth; }
 
 /* Phones: each screen stays one screenful; the details panel scrolls inside itself. */
 @media (max-width: 700px) {
-  .screen-body { width: calc(100% - 2rem); padding-block: 0.6rem; }
+  .screen-body { width: calc(100% - var(--spacing-4) * 2); padding-block: var(--spacing-2); }
   .screen h1 { font-size: 2.3rem; }
   .popup-list, .popup-empty { height: 142px; }
   .popup-footer { display: none; }
   .explore-panel { min-height: 0; height: 14rem; overflow-y: auto; padding-inline-end: 0.25rem; }
   .keys li, .lines li { padding: 0.5rem 0; }
-  .foot { width: calc(100% - 2rem); padding-block: 0.6rem; }
+  .foot { width: calc(100% - var(--spacing-4) * 2); padding-block: var(--spacing-2); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,6 +14,9 @@ import {useState} from 'react';
 import {TopNav, TopNavHeading} from '@astryxdesign/core/TopNav';
 import {Demo} from './Demo';
 
+// One shared content line for both screens and the footer.
+const CONTENT_WIDTH = 1180;
+
 const AGENT = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 const IS_MAC = AGENT.includes('Mac');
 type System = 'macos' | 'windows' | 'linux';
@@ -68,13 +71,13 @@ const INSTALL: Record<System, {label: string; status: string; isPending?: boolea
     label: 'Windows',
     status: 'Early build',
     command: 'irm https://tokly.blackielabs.com/install.ps1 | iex',
-    notes: 'Run it in PowerShell on 64-bit Windows 10 or later. It downloads the setup program, checks its SHA-256 and installs for your account only. Early build: installed and started in automated tests, not yet on many real PCs. The setup program is not code-signed.',
+    notes: 'Run it in PowerShell on 64-bit Windows 10 or later. It downloads the setup program, checks its SHA-256 and installs for your account only. Early build: installed and started in automated tests; not yet tested by hand on real hardware. The setup program is not code-signed.',
   },
   linux: {
     label: 'Linux',
     status: 'Early build',
     command: 'curl -fsSL https://tokly.blackielabs.com/install.sh | sh',
-    notes: 'For 64-bit Debian, Ubuntu and relatives with a system tray. It downloads the .deb, checks its SHA-256 and installs it with apt. Early build: installed and started in automated tests, not yet on many real desktops.',
+    notes: 'For 64-bit Debian, Ubuntu and relatives with a system tray. It downloads the .deb, checks its SHA-256 and installs it with apt. Early build: installed and started in automated tests; not yet tested by hand on real hardware.',
   },
 };
 
@@ -193,7 +196,7 @@ export function App() {
               <Button label="Install" href="#more" variant="secondary" size="sm" />
             }
           />
-          <VStack className="screen-body" vAlign="center">
+          <VStack className="screen-body" maxWidth={CONTENT_WIDTH} vAlign="center">
             <Grid columns={{minWidth: 340, repeat: 'fit'}} gap={10} align="center">
               <VStack gap={5}>
                 <Heading level={1} type="display-1" textWrap="balance" id="hero-title">
@@ -212,7 +215,7 @@ export function App() {
         </section>
 
         <section id="more" className="screen" aria-label="Details and install">
-          <VStack className="screen-body" vAlign="center" gap={6}>
+          <VStack className="screen-body" maxWidth={CONTENT_WIDTH} vAlign="center" gap={6}>
             <Grid columns={{minWidth: 340, repeat: 'fit'}} gap={8} align="start">
               <VStack gap={4} className="explore">
                 <Heading level={2} type="display-3" textWrap="balance">
@@ -233,7 +236,7 @@ export function App() {
               <Install />
             </Grid>
           </VStack>
-          <footer className="foot">
+          <HStack as="footer" className="foot" maxWidth={CONTENT_WIDTH} wrap="wrap" vAlign="center" hAlign="between" gap={3}>
             <HStack gap={2} vAlign="center">
               <img src="/assets/icon.svg" alt="" width={22} height={22} className="logo" />
               <Text type="body" weight="semibold">
@@ -242,7 +245,7 @@ export function App() {
             </HStack>
             <Text type="supporting">Clipboard history for your menu bar.</Text>
             <Text type="supporting">© 2026 Blackie Labs</Text>
-          </footer>
+          </HStack>
         </section>
       </main>
     </VStack>

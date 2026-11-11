@@ -140,7 +140,7 @@ jobs:
             echo
             echo "## Good to know"
             echo
-            echo "- Windows and Linux are early builds: installed and started in automated tests, not yet on many real machines."
+            echo "- Windows and Linux are early builds: installed and started in automated tests; not yet tested by hand on real hardware."
             echo "- The Windows installer is not code-signed, so SmartScreen may warn."
             if [ "$HAS_APPLE_SIGNING" != "true" ]; then
               echo "- The macOS app is not signed with a Developer ID or notarized; macOS will block it until you allow it in System Settings, Privacy and Security."
