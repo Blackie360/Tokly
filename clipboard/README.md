@@ -28,7 +28,7 @@ Push a tag named `clipboard-v<version>` matching `src-tauri/tauri.conf.json` to 
 Linux `.deb`, each with its SHA-256, creates a GitHub release, and then runs the two install scripts
 against it. With the Apple signing secrets listed in that workflow it signs and notarizes the macOS
 app; without them the release notes say it is unsigned. The Windows installer is not code-signed. `packaging/tokly.rb` is the Homebrew
-cask to publish in a public tap once a signed build is downloadable without signing in.
+candidate cask template. The public [Homebrew tap](https://github.com/Blackie360/homebrew-tokly) now contains release preparation instructions and a generator that verifies the checksum, Developer ID signature, Gatekeeper assessment, notarization ticket, version and bundle identity. No live cask is published yet. Use that generator after a signed build is publicly downloadable and the real-device release checks are complete.
 
 ## Windows and Linux
 
