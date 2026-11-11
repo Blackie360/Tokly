@@ -22,6 +22,8 @@ Tokly is a clipboard history for the macOS menu bar and the Windows and Linux sy
 - In `clipboard/src-tauri`: `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D warnings` and `cargo test --locked`.
 - For website changes: `npm run build` in `website/` (type-check, build and `verify.mjs`).
 - CI must stay green on macOS, Windows and Linux. A change that only compiles on one system is not done.
-- Do not describe the Windows or Linux build as tested until someone has run it on a real machine; say what was and was not checked.
+- Windows and Linux are "early builds": CI installs and starts them, but nobody has used them on a real machine. Keep that wording until someone has, and say what was and was not checked.
+- The website is two screens tall and minimal by request: a pitch with the live demo, then details and install. Do not add sections that make it longer.
+- `website/public/install.sh` and `install.ps1` are the public install commands. They must keep verifying the SHA-256 before installing.
 - Releases go through `.github/workflows/clipboard-release.yml`.
 - Do not claim unsigned bundles are release-ready; signing, notarization and real-device testing of the global shortcut, pasting, tray actions and screenshot capture remain release gates.

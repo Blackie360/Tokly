@@ -25,15 +25,27 @@ macOS, Windows and Linux on every pull request.
 
 Push a tag named `clipboard-v<version>` matching `src-tauri/tauri.conf.json` to run
 `.github/workflows/clipboard-release.yml`. It builds a universal macOS app, a Windows installer and a
-Linux `.deb`, each with its SHA-256, and creates a GitHub release. With the Apple signing secrets
-listed in that workflow it signs and notarizes the macOS app; without them the release is an
-unsigned pre-release. The Windows installer is not code-signed. `packaging/tokly.rb` is the Homebrew
+Linux `.deb`, each with its SHA-256, creates a GitHub release, and then runs the two install scripts
+against it. With the Apple signing secrets listed in that workflow it signs and notarizes the macOS
+app; without them the release notes say it is unsigned. The Windows installer is not code-signed. `packaging/tokly.rb` is the Homebrew
 cask to publish in a public tap once a signed build is downloadable without signing in.
 
 ## Windows and Linux
 
-The same app builds for Windows (x64 installer) and Linux (`.deb`). CI compiles, lints, tests and
-bundles both on every pull request, but **neither has been run by hand on a real machine yet**.
+The same app builds for Windows (x64 installer) and Linux (`.deb`). On every pull request CI
+compiles, lints, tests and bundles both, then installs each one and checks the app stays running
+for ten seconds. **Neither has been used by hand on a real machine yet.**
+
+Install commands (they download the newest release, check its SHA-256 and install it):
+
+```sh
+# Windows, in PowerShell
+irm https://tokly.blackielabs.com/install.ps1 | iex
+# Debian, Ubuntu and relatives
+curl -fsSL https://tokly.blackielabs.com/install.sh | sh
+```
+
+The scripts live in `website/public/` and are served by the website.
 
 What differs from macOS:
 

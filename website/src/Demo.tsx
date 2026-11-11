@@ -1,16 +1,8 @@
-import {useMemo, useRef, useState, type KeyboardEvent} from 'react';
-import {Button} from '@astryxdesign/core/Button';
-import {HStack, VStack} from '@astryxdesign/core/Layout';
+import {useMemo, useState, type KeyboardEvent} from 'react';
+import {VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Kbd} from '@astryxdesign/core/Kbd';
 import {createHistory, displayText, hexColor, segments} from './history';
-
-const SAMPLES = [
-  {label: '#E8683A', text: '#E8683A', hint: 'a color'},
-  {label: 'npm run build && npm test', text: 'npm run build && npm test', hint: 'a command'},
-  {label: 'Sent from the 14:05 to Nakuru', text: 'Sent from the 14:05 to Nakuru', hint: 'a sentence'},
-  {label: 'Blackie Labs⏎Ngong Road⏎Nairobi', text: 'Blackie Labs\nNgong Road\nNairobi', hint: 'three lines'},
-];
 
 const short = (text: string) => {
   const shown = displayText(text);
@@ -24,7 +16,6 @@ export function Demo() {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
   const bump = () => setVersion((version) => version + 1);
 
   const rows = history.list(query);
@@ -76,35 +67,14 @@ export function Demo() {
     event.preventDefault();
   };
 
-  const addSample = (text: string) => {
-    setSelectedId(history.add(text));
-    setQuery('');
-    setStatus(`Added “${short(text)}” to the demo history. Now search for it.`);
-    bump();
-    searchRef.current?.focus({preventScroll: true});
-  };
-
-  const reset = () => {
-    history.reset();
-    setSelectedId(null);
-    setQuery('');
-    setStatus('Demo history reset.');
-    bump();
-  };
-
   let unpinnedSeen = 0;
   const firstUnpinned = rows.findIndex((row) => row.pin === null);
 
   return (
-    <VStack gap={4}>
+    <VStack gap={3}>
       <figure className="stage" aria-label="Interactive demo of the Tokly history">
-        <span className="slip slip-a" aria-hidden="true">#E8683A</span>
-        <span className="slip slip-b" aria-hidden="true">git stash pop</span>
-        <span className="slip slip-c" aria-hidden="true">Screenshot 16.20</span>
-
         <section className="popup">
           <input
-            ref={searchRef}
             className="popup-search"
             type="text"
             value={query}
@@ -165,31 +135,8 @@ export function Demo() {
         </section>
       </figure>
 
-      <HStack gap={2} wrap="wrap" vAlign="center">
-        <Button label={selected?.pin ? 'Unpin' : 'Pin'} size="sm" isDisabled={!selected} onClick={togglePin} />
-        <Button label="Delete" size="sm" isDisabled={!selected} onClick={removeSelected} />
-        <Button label="Reset" size="sm" variant="ghost" onClick={reset} />
-        <Text type="supporting">
-          or <Kbd keys="alt+p" /> and <Kbd keys="alt+backspace" /> in the search field
-        </Text>
-      </HStack>
-
-      <VStack gap={2}>
-        <Text type="label" weight="semibold">
-          Copy one of these, then find it in the history
-        </Text>
-        <ul className="samples">
-          {SAMPLES.map((sample) => (
-            <li key={sample.text}>
-              <code>{sample.label}</code>
-              <Button label={`Copy ${sample.hint}`} size="sm" onClick={() => addSample(sample.text)} />
-            </li>
-          ))}
-        </ul>
-      </VStack>
-
-      <Text type="supporting" id="demo-help">
-        Interactive demo. It lives on this page only and never reads your clipboard.
+      <Text type="supporting" id="demo-help" justify="center">
+        Try it: type to search, <Kbd keys="up" /> <Kbd keys="down" /> to move, <Kbd keys="enter" /> to pick, <Kbd keys="alt+p" /> to pin. This demo never reads your clipboard.
       </Text>
       <p className="demo-status" role="status" aria-live="polite">
         {status}
